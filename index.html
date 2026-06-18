@@ -92,6 +92,7 @@ tbody tr:last-child td{border-bottom:none}
 .t-name{font-weight:700;white-space:nowrap}
 .t-sub{color:var(--gray);font-size:12px}
 th.rz{position:relative}.rzh{position:absolute;top:0;right:-4px;width:9px;height:100%;cursor:col-resize;z-index:3}.rzh:hover,.rzh.drag{background:var(--billy-blue)}td.rzc>div{max-width:var(--cw,220px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.period-bar{margin-bottom:12px}.sortctl{display:inline-flex;align-items:center;gap:6px}.sortctl .sl{font-size:12px;color:var(--gray);font-weight:600}.filters select{height:34px;border:1px solid var(--gray-200);border-radius:9px;padding:0 8px;font-size:12.5px;background:#fff;color:var(--gray-800);cursor:pointer}.seg-range{display:flex;align-items:center;gap:8px;margin:9px 0 2px;font-size:13px;color:var(--gray-700)}.seg-range input{height:34px;padding:0 10px;border:1px solid var(--gray-200);border-radius:9px;font-size:13px}
 .num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .amt{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
 .ellip{max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -346,8 +347,9 @@ const flagHtml=f=>`<span class="flag ${f.s}" title="${escH(f.d)}">${f.t}</span>`
 /* ===================== 상태/필터/기간 ===================== */
 let current='dashboard',_sel=new Set(),_q='',_filterOpen=false;
 let _sort={payout:{k:'date',dir:-1},invoice:{k:'date',dir:-1},vendors:{k:'cnt',dir:-1}};
+const SORTS={payout:[['date','요청일'],['name','거래처명'],['amount','금액'],['team','팀'],['status','상태'],['paid','지급일']],invoice:[['date','요청일'],['name','공급받는자'],['item','품목'],['writeDate','작성일'],['amount','합계'],['status','상태']]};
 let FILTER={teams:new Set(),requesters:new Set(),statuses:new Set(),anomaly:false,big:false};
-let PERIOD='all'; // month | ytd | all
+let PERIOD='all',PFROM='',PTO=''; // month | ytd | all | custom
 function clearFilter(){FILTER={teams:new Set(),requesters:new Set(),statuses:new Set(),anomaly:false,big:false};_q='';}
 /* 컬럼 너비 조절(거래처/예금주 등 첫 열) — 드래그로 조절, localStorage 저장 */
 let COLW=(function(){try{return JSON.parse(localStorage.getItem('fin_colw')||'{}')}catch(e){return {}}})();
@@ -357,10 +359,11 @@ function colwVar(key){return (COLW[key]||220)+'px';}
   document.addEventListener('mousemove',function(e){if(!d)return;var w=Math.max(110,Math.min(680,d.w0+(e.clientX-d.x0)));d.tbl.style.setProperty('--cw',w+'px');COLW[d.key]=w;});
   document.addEventListener('mouseup',function(){if(!d)return;var el=document.querySelector('.rzh.drag');if(el)el.classList.remove('drag');document.body.style.cursor='';try{localStorage.setItem('fin_colw',JSON.stringify(COLW))}catch(e){}d=null;});
 })();
-function inPeriod(d){if(PERIOD==='all'||!d)return true;const now=today();if(PERIOD==='ytd')return d>=now.slice(0,4)+'-01-01';if(PERIOD==='month')return d.slice(0,7)===now.slice(0,7);return true;}
+function inPeriod(d){if(PERIOD==='all')return true;if(!d)return false;const now=today();if(PERIOD==='ytd')return d>=now.slice(0,4)+'-01-01';if(PERIOD==='month')return d.slice(0,7)===now.slice(0,7);if(PERIOD==='custom')return (!PFROM||d>=PFROM)&&(!PTO||d<=PTO);return true;}
 function roleScope(arr){if(IS_SUPA)return arr.slice();/* 실모드는 서버 RLS가 가시성 처리 */if(canViewAll())return arr.slice();if(ROLE==='lead')return arr.filter(r=>r.team===ME().team);return arr.filter(r=>r.requester===ME().name);}
 function visible(arr,kind){
   let list=roleScope(arr);
+  if(PERIOD!=='all'){const df=(kind==='invoice')?'writeDate':'applied';list=list.filter(r=>inPeriod(r[df]));}
   if(FILTER.teams.size)list=list.filter(r=>FILTER.teams.has(normalizeTeam(r.team)));
   if(FILTER.statuses.size)list=list.filter(r=>FILTER.statuses.has(r.status));
   if(FILTER.big&&kind==='payout')list=list.filter(r=>isBig(r));
@@ -373,7 +376,9 @@ function filterBar(kind){
   const sm=kind==='payout'?PSTATUS:ISTATUS;
   const stats=Object.keys(sm);
   const cnt=FILTER.teams.size+FILTER.statuses.size+(FILTER.anomaly?1:0)+(FILTER.big?1:0);
-  let h=`<div class="filters"><button class="btn btn-sm ${cnt?'btn-line':'btn-secondary'}" onclick="_filterOpen=!_filterOpen;render()">${I.filter}<span>필터${cnt?' · '+cnt:''}</span></button>`;
+  let h=`<div class="period-bar">${periodSel()}</div>`;
+  h+=`<div class="filters"><button class="btn btn-sm ${cnt?'btn-line':'btn-secondary'}" onclick="_filterOpen=!_filterOpen;render()">${I.filter}<span>필터${cnt?' · '+cnt:''}</span></button>`;
+  h+=`<div class="sortctl"><span class="sl">정렬</span><select onchange="_sort['${kind}'].k=this.value;render()">${SORTS[kind].map(o=>`<option value="${o[0]}" ${_sort[kind].k===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select><button class="btn btn-sm btn-secondary" title="정렬 방향 전환" onclick="_sort['${kind}'].dir*=-1;render()">${_sort[kind].dir<0?'▼':'▲'}</button></div>`;
   if(cnt)h+=`<button class="btn btn-sm btn-secondary" onclick="clearFilter();render()">초기화</button>`;
   h+=`<div class="search">${I.search}<input placeholder="검색(거래처·금액·적요)" value="${escH(_q)}" oninput="onSearch(this.value)"></div></div>`;
   if(_filterOpen){
@@ -419,13 +424,15 @@ function render(){
   buildNav();p.render();
 }
 function onSearch(v){_q=v;const c=document.getElementById('content');/* 검색은 리렌더 */render();const inp=c.querySelector('.search input');if(inp){inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length);}}
-function setSort(page,k){const s=_sort[page];if(s.k===k)s.dir*=-1;else{s.k=k;s.dir=k==='date'?-1:1;}render();}
+function setSort(page,k){const s=_sort[page];if(s.k===k)s.dir*=-1;else{s.k=k;s.dir=(k==='date'||k==='writeDate'||k==='paid'||k==='amount')?-1:1;}render();}
 function sortIcon(page,k){const s=_sort[page];return s.k===k?`<span class="ar">${s.dir>0?'▲':'▼'}</span>`:'';}
-function applySort(list,page,amtKey,nameKey){const s=_sort[page];list.sort((a,b)=>{let r=0;if(s.k==='amount')r=(a[amtKey]||0)-(b[amtKey]||0);else if(s.k==='name')r=String(a[nameKey]||'').localeCompare(String(b[nameKey]||''),'ko');else r=String(a.applied||'').localeCompare(String(b.applied||''));return r*s.dir||(b.id>a.id?1:-1);});return list;}
+function sortVal(r,page,k){if(k==='amount')return page==='invoice'?(r.total||0):(r.amount||0);if(k==='name')return (page==='invoice'?r.company:r.payee)||'';if(k==='item')return r.itemName||'';if(k==='writeDate')return r.writeDate||'';if(k==='team')return normalizeTeam(r.team)||'';if(k==='status')return r.status||'';if(k==='paid')return r.paidAt||'';return r.applied||'';}
+function applySort(list,page){const s=_sort[page];const isNum=(s.k==='amount');list.sort((a,b)=>{const av=sortVal(a,page,s.k),bv=sortVal(b,page,s.k);let r=isNum?(av-bv):String(av).localeCompare(String(bv),'ko');return r*s.dir||(b.id>a.id?1:-1);});return list;}
 function toggleSel(id){_sel.has(id)?_sel.delete(id):_sel.add(id);render();}
 function toggleAll(page){const list=visible(page==='payout'?DB.payout:DB.invoice,page);const ids=list.map(r=>r.id);_sel=new Set(ids.every(i=>_sel.has(i))?[]:ids);render();}
 /* ===================== 대시보드 ===================== */
-function periodSel(){return `<div class="seg" style="margin-bottom:14px"><button class="${PERIOD==='month'?'on':''}" onclick="PERIOD='month';render()">이번달</button><button class="${PERIOD==='ytd'?'on':''}" onclick="PERIOD='ytd';render()">올해</button><button class="${PERIOD==='all'?'on':''}" onclick="PERIOD='all';render()">전체</button></div>`;}
+function setPeriod(p){PERIOD=p;render();}
+function periodSel(){return `<div class="seg"><button class="${PERIOD==='month'?'on':''}" onclick="setPeriod('month')">이번달</button><button class="${PERIOD==='ytd'?'on':''}" onclick="setPeriod('ytd')">올해</button><button class="${PERIOD==='all'?'on':''}" onclick="setPeriod('all')">전체</button><button class="${PERIOD==='custom'?'on':''}" onclick="setPeriod('custom')">기간지정</button></div>${PERIOD==='custom'?`<div class="seg-range"><input type="date" value="${PFROM}" onchange="PFROM=this.value;render()"><span>~</span><input type="date" value="${PTO}" onchange="PTO=this.value;render()"></div>`:''}`;}
 function renderDashboard(){
   const c=document.getElementById('content');
   const P=DB.payout.filter(r=>inPeriod(r.applied)),Iv=DB.invoice.filter(r=>inPeriod(r.applied));
@@ -462,7 +469,7 @@ function renderDashboard(){
 /* ===================== 이체 요청 ===================== */
 function renderPayout(){
   const c=document.getElementById('content');
-  let list=applySort(visible(DB.payout,'payout'),'payout','amount','payee');
+  let list=applySort(visible(DB.payout,'payout'),'payout');
   const mineApprove=canApprove();
   const pend=list.filter(r=>r.status==='requested');
   let h=`<div class="kpis" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
@@ -632,7 +639,7 @@ function invoiceDeadline(w){if(!w)return null;const d=new Date(w);return new Dat
 function deadlineBadge(w){const dl=invoiceDeadline(w);if(!dl)return '';const left=Math.round((dl-new Date(today()))/86400000);if(left<0)return `<span class="flag warn" title="익월 10일 초과 — 가산세">⛔ 발행기한 초과</span>`;if(left<=3)return `<span class="flag caution" title="익월 10일까지">⏰ 발행기한 D-${left}</span>`;return '';}
 function renderInvoice(){
   const c=document.getElementById('content');
-  let list=applySort(visible(DB.invoice,'invoice'),'invoice','total','company');
+  let list=applySort(visible(DB.invoice,'invoice'),'invoice');
   const mineApprove=canApprove();const pend=list.filter(r=>r.status==='requested');
   let h=`<div class="kpis" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
     <div class="kpi orange"><div class="lbl">발행 대기</div><div class="val">${pend.length}건</div></div>
@@ -733,17 +740,18 @@ async function loadMe(){
 }
 function _mapPayout(r){return {id:r.id,requester:r.requester_name,team:r.team,payee:r.payee,bank:r.bank,account:r.account,amount:Number(r.amount)||0,unit:r.currency||'원',category:r.category,purpose:r.purpose,evidence:r.evidence_url,hasTax:r.has_tax,status:r.status,paidAt:r.paid_date||'',applied:(r.created_at||'').slice(0,10),wh:r.wh,fuel:r.fuel};}
 function _mapInvoice(r){return {id:r.id,requester:r.requester_name,team:r.team,saleType:r.sale_type,bizNo:r.biz_no,company:r.company,ceo:r.ceo,email:r.email,writeDate:r.write_date,itemName:r.item_name,supply:Number(r.supply)||0,tax:Number(r.vat)||0,total:Number(r.total)||0,evidence:r.evidence_url,status:r.status,applied:(r.created_at||'').slice(0,10),issuedAt:r.issued_date||''};}
+async function fetchAllRows(factory){const PAGE=1000;let from=0,all=[];for(;;){const{data,error}=await factory().range(from,from+PAGE-1);if(error)throw error;all=all.concat(data||[]);if(!data||data.length<PAGE)break;from+=PAGE;}return all;}
 async function loadData(){
   if(!IS_SUPA)return;
   const[po,iv,ve,rc,lo]=await Promise.all([
-    sb.from('fin_payouts').select('*').order('created_at',{ascending:false}),
-    sb.from('fin_invoices').select('*').order('created_at',{ascending:false}),
-    sb.from('fin_vendors').select('*, accounts:fin_vendor_accounts(*)'),
+    fetchAllRows(()=>sb.from('fin_payouts').select('*').order('created_at',{ascending:false})),
+    fetchAllRows(()=>sb.from('fin_invoices').select('*').order('created_at',{ascending:false})),
+    fetchAllRows(()=>sb.from('fin_vendors').select('*, accounts:fin_vendor_accounts(*)').order('tx_count',{ascending:false})),
     sb.from('fin_recurring').select('*'),
     sb.from('fin_locks').select('ym')]);
-  DB.payout=(po.data||[]).map(_mapPayout);
-  DB.invoice=(iv.data||[]).map(_mapInvoice);
-  VENDORS.length=0;(ve.data||[]).forEach(v=>VENDORS.push({id:v.id,name:v.name,bizNo:v.biz_no,email:v.email,team:v.team,unit:v.unit||'원',cnt:v.tx_count||0,avg:Number(v.avg_amount)||0,max:Number(v.max_amount)||0,lastDate:v.last_date||'',accounts:(v.accounts||[]).map(a=>({id:a.id,bank:a.bank,account:a.account,holder:a.holder,primary:a.is_primary})).sort((a,b)=>(b.primary?1:0)-(a.primary?1:0))}));
+  DB.payout=po.map(_mapPayout);
+  DB.invoice=iv.map(_mapInvoice);
+  VENDORS.length=0;ve.forEach(v=>VENDORS.push({id:v.id,name:v.name,bizNo:v.biz_no,email:v.email,team:v.team,unit:v.unit||'원',cnt:v.tx_count||0,avg:Number(v.avg_amount)||0,max:Number(v.max_amount)||0,lastDate:v.last_date||'',accounts:(v.accounts||[]).map(a=>({id:a.id,bank:a.bank,account:a.account,holder:a.holder,primary:a.is_primary})).sort((a,b)=>(b.primary?1:0)-(a.primary?1:0))}));
   DB.templates=(rc.data||[]).map(t=>({id:t.id,payee:t.payee,bank:t.bank,account:t.account,amount:Number(t.amount)||0,category:t.category,total:t.total,done:t.done,nextDate:t.next_date,requester:t.requester_name,team:t.team}));
   LOCKED=new Set((lo.data||[]).map(x=>x.ym));
 }
