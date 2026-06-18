@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>재무관리 · 베이비빌리</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --billy-blue:#3373BA;--billy-blue-700:#2a5f9b;--billy-blue-600:#2f69a8;--billy-blue-50:#eaf1f9;--billy-blue-100:#dbe8f5;
+  --billy-pink:#f6d5c3;--billy-pink-soft:#fdeee6;--billy-pink-deep:#e7a988;
+  --gray:#898989;--gray-900:#1f2329;--gray-800:#3a3f47;--gray-700:#5b6068;--gray-600:#777c84;--gray-400:#aeb2b8;--gray-300:#d6d9dd;--gray-200:#e8eaed;--gray-100:#f1f3f5;--gray-50:#f8f9fa;--white:#fff;
+  --sys-red:#F2545B;--sys-orange:#FF9F2D;--sys-green:#33B97D;
+  --r-card:16px;--r-md:8px;--r-sm:4px;
+  --sh-s:0 1px 6px rgba(0,0,0,.12);--sh-l:0 3px 17px 2px rgba(0,0,0,.13);--sh-xl:0 3px 27px 6px rgba(0,0,0,.15);--sh-blue:0 3px 14px 1px rgba(51,115,186,.32);
+  --font:'Noto Sans KR',-apple-system,BlinkMacSystemFont,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--font);color:var(--gray-900);background:var(--gray-50);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+input,select,textarea{font-family:inherit;font-size:14px}
+a{color:inherit;text-decoration:none}
+.layout{display:flex;min-height:100vh}
+.sidebar{width:236px;background:var(--white);border-right:1px solid var(--gray-200);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;flex-shrink:0}
+.brand{display:flex;align-items:center;gap:10px;padding:22px 20px 18px}
+.brand .logo{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:var(--sh-blue);flex-shrink:0;background:var(--billy-blue);color:#fff;font-weight:700;font-size:15px}
+.brand .tit{font-weight:700;font-size:16px;letter-spacing:-.3px}
+.brand .tit small{display:block;font-weight:400;font-size:11px;color:var(--gray)}
+.nav{padding:6px 12px;display:flex;flex-direction:column;gap:2px;flex:1;min-height:0;overflow-y:auto}
+.nav-label{font-size:11px;color:var(--gray-400);font-weight:500;padding:14px 12px 6px}
+.nav-item{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:var(--r-md);color:var(--gray-700);font-weight:500;transition:.12s}
+.nav-item svg{width:19px;height:19px;flex-shrink:0;stroke:var(--gray-600);stroke-width:1.7;fill:none}
+.nav-item:hover{background:var(--gray-50)}
+.nav-item.active{background:var(--billy-blue-50);color:var(--billy-blue);font-weight:700}
+.nav-item.active svg{stroke:var(--billy-blue)}
+.nav-item .dot{margin-left:auto;background:var(--sys-red);color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 5px}
+.side-foot{margin-top:auto;padding:14px;border-top:1px solid var(--gray-100)}
+.userchip{display:flex;align-items:center;gap:10px;padding:8px;border-radius:var(--r-md)}
+.userchip .av{width:34px;height:34px;border-radius:50%;background:var(--billy-pink);color:var(--billy-pink-deep);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
+.userchip .nm{font-weight:700;font-size:13px}
+.userchip .rl{font-size:11px;color:var(--gray)}
+.rolesel{margin-top:9px}
+.rolesel select{width:100%;height:36px;border:1.4px solid var(--gray-300);border-radius:var(--r-md);padding:0 10px;font-weight:600;font-size:12.5px;color:var(--gray-700);background:#fff;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23898989' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>");background-repeat:no-repeat;background-position:right 8px center;padding-right:28px}
+.demo-note{font-size:11px;color:var(--gray-400);margin-top:8px;text-align:center;line-height:1.4}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:flex-start;justify-content:space-between;padding:30px 34px 16px;gap:20px}
+.page-h h1{font-size:25px;font-weight:700;letter-spacing:-.6px}
+.page-h p{color:var(--gray);margin-top:5px;font-size:13px}
+.topbar-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.content{padding:8px 34px 48px;flex:1}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:40px;padding:0 18px;border-radius:var(--r-md);font-weight:700;font-size:14px;transition:.12s;white-space:nowrap}
+.btn svg{width:17px;height:17px;stroke:currentColor;stroke-width:2;fill:none}
+.btn-sm{height:32px;padding:0 13px;font-size:13px}.btn-sm svg{width:14px;height:14px}
+.btn-primary{background:var(--billy-blue);color:#fff;box-shadow:var(--sh-blue)}
+.btn-primary:hover{background:var(--billy-blue-600)}
+.btn-line{background:#fff;color:var(--billy-blue);border:1.4px solid var(--billy-blue)}
+.btn-line:hover{background:var(--billy-blue-50)}
+.btn-secondary{background:var(--gray-100);color:var(--gray-700)}
+.btn-secondary:hover{background:var(--gray-200)}
+.btn-danger{background:#fff;color:var(--sys-red);border:1.4px solid var(--sys-red)}
+.btn-danger:hover{background:#fdecec}
+.btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+.card{background:#fff;border:1px solid var(--gray-200);border-radius:var(--r-card);box-shadow:var(--sh-s)}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.search{position:relative;margin-left:auto}
+.search input{height:40px;border:1.4px solid var(--gray-300);border-radius:999px;padding:0 16px 0 38px;width:230px;background:#fff}
+.search input:focus{outline:none;border-color:var(--billy-blue);box-shadow:0 0 0 3px var(--billy-blue-50)}
+.search svg{position:absolute;left:13px;top:11px;width:18px;height:18px;stroke:var(--gray-400);stroke-width:2;fill:none}
+.seg{display:inline-flex;border:1.4px solid var(--gray-300);border-radius:var(--r-md);overflow:hidden}
+.seg button{height:34px;padding:0 14px;font-size:12.5px;font-weight:600;color:var(--gray-600);background:#fff}
+.seg button.on{background:var(--billy-blue);color:#fff}
+.chip{display:inline-flex;align-items:center;height:28px;padding:0 11px;border-radius:999px;border:1.4px solid var(--gray-300);background:#fff;font-size:12px;font-weight:600;color:var(--gray-600);margin:3px 4px 3px 0}
+.chip.on{background:var(--billy-blue);color:#fff;border-color:var(--billy-blue)}
+.chip:hover{border-color:var(--billy-blue)}
+.fgroup{margin-bottom:9px}
+.fgroup .fl{font-size:11.5px;color:var(--gray);font-weight:600;margin-bottom:3px}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:820px}
+thead th{text-align:left;color:var(--gray-600);font-weight:700;font-size:12.5px;padding:13px 14px;border-bottom:1.5px solid var(--gray-200);white-space:nowrap;background:var(--gray-50)}
+th.sortable{cursor:pointer;user-select:none}
+th.sortable:hover{color:var(--billy-blue)}
+th .ar{font-size:9px;margin-left:3px;color:var(--billy-blue)}
+tbody td{padding:13px 14px;border-bottom:1px solid var(--gray-100);vertical-align:middle}
+tbody tr:hover{background:var(--billy-blue-50)}
+tbody tr:last-child td{border-bottom:none}
+.t-name{font-weight:700;white-space:nowrap}
+.t-sub{color:var(--gray);font-size:12px}
+.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.amt{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ellip{max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.badge{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 10px;border-radius:999px;font-size:11.5px;font-weight:700}
+.badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.badge-pending{background:#fff5e9;color:var(--sys-orange)}
+.badge-paid{background:#e8f6ee;color:#1f9d57}
+.badge-rejected{background:#fdecec;color:var(--sys-red)}
+.badge-canceled{background:var(--gray-100);color:var(--gray)}
+.tag{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:6px;font-size:11.5px;font-weight:700;white-space:nowrap}
+.tag-gray{background:var(--gray-100);color:var(--gray-600)}
+.tag-blue{background:var(--billy-blue-50);color:var(--billy-blue)}
+.tag-fuel{background:#eef7ed;color:#3a9d5d}
+.flag{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:700;padding:2px 6px;border-radius:5px;margin:1px 2px 1px 0;white-space:nowrap}
+.flag.warn{background:#fdecec;color:#d64545}
+.flag.caution{background:#fff1e2;color:#d9821f}
+.flag.info{background:var(--billy-blue-50);color:var(--billy-blue)}
+.overlay{position:fixed;inset:0;background:rgba(31,35,41,.45);display:flex;align-items:center;justify-content:center;z-index:100;padding:24px;animation:fade .15s}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.modal{background:#fff;border-radius:var(--r-card);box-shadow:var(--sh-xl);width:520px;max-width:100%;max-height:92vh;display:flex;flex-direction:column;animation:pop .18s}
+.modal.wide{width:700px}
+@keyframes pop{from{transform:translateY(12px) scale(.98);opacity:.6}to{transform:none;opacity:1}}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:22px 24px 6px}
+.modal-head h3{font-size:18px;font-weight:700}
+.modal-head .x{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--gray)}
+.modal-head .x:hover{background:var(--gray-100)}
+.modal-body{padding:14px 24px;overflow-y:auto}
+.modal-foot{padding:16px 24px 22px;display:flex;gap:10px}
+.modal-foot .btn{flex:1}
+.form-row{margin-bottom:15px}
+.form-row>label{display:block;font-weight:700;font-size:13px;margin-bottom:7px}
+.form-row .req{color:var(--billy-blue)}
+.form-row .hint{color:var(--gray);font-weight:400;font-size:12px;margin-left:4px}
+.input,textarea.input{width:100%;height:42px;border:1.4px solid var(--gray-300);border-radius:var(--r-md);padding:0 13px;background:#fff}
+textarea.input{height:auto;padding:11px 13px;resize:vertical;min-height:60px}
+.input:focus,textarea.input:focus{outline:none;border-color:var(--billy-blue);box-shadow:0 0 0 3px var(--billy-blue-50)}
+select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23898989' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.preview-box{background:var(--billy-blue-50);border-radius:var(--r-md);padding:12px 15px;display:flex;justify-content:space-between;align-items:center;font-size:13px;gap:10px;flex-wrap:wrap}
+.preview-box b{font-size:16px;color:var(--billy-blue)}
+.dl{display:grid;grid-template-columns:120px 1fr;gap:9px 14px;font-size:13.5px}
+.dl dt{color:var(--gray);font-weight:500}
+.dl dd{font-weight:500;word-break:break-all}
+.hr{height:1px;background:var(--gray-100);margin:13px 0}
+.empty{text-align:center;padding:54px 20px;color:var(--gray)}
+.empty svg{width:44px;height:44px;stroke:var(--gray-300);stroke-width:1.5;margin-bottom:12px;fill:none}
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--gray-900);color:#fff;padding:13px 22px;border-radius:999px;font-weight:500;font-size:13.5px;box-shadow:var(--sh-l);z-index:200;display:flex;align-items:center;gap:9px;animation:up .2s}
+.toast.ok{background:#1f7a52}.toast.err{background:#c23b42}
+@keyframes up{from{transform:translate(-50%,14px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+.toast svg{width:18px;height:18px;stroke:#fff;stroke-width:2.2;fill:none}
+.cbx{width:17px;height:17px;cursor:pointer;accent-color:var(--billy-blue);vertical-align:middle}
+.batchbar{display:flex;align-items:center;gap:10px;background:var(--billy-blue-50);border:1px solid var(--billy-blue-100);border-radius:var(--r-md);padding:10px 14px;margin-bottom:14px;flex-wrap:wrap}
+.batchbar .sel{font-weight:700;color:var(--billy-blue)}
+.rowact{display:flex;gap:6px;justify-content:flex-end}
+.iconbtn{width:30px;height:30px;border-radius:7px;border:1.4px solid var(--gray-200);background:#fff;color:var(--gray-600);display:inline-flex;align-items:center;justify-content:center}
+.iconbtn:hover{border-color:var(--billy-blue);color:var(--billy-blue);background:var(--billy-blue-50)}
+.iconbtn svg{width:15px;height:15px;stroke:currentColor;stroke-width:1.9;fill:none}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:#fff;border:1px solid var(--gray-200);border-radius:var(--r-card);padding:15px 18px;box-shadow:var(--sh-s)}
+.kpi.click{cursor:pointer;transition:.12s}
+.kpi.click:hover{box-shadow:0 0 0 3px var(--billy-blue-50);border-color:var(--billy-blue)}
+.kpi .lbl{color:var(--gray);font-size:12.5px;font-weight:500}
+.kpi .val{font-size:22px;font-weight:700;margin-top:4px;letter-spacing:-.5px}
+.kpi.blue{background:var(--billy-blue-50);border-color:var(--billy-blue-100)}.kpi.blue .val{color:var(--billy-blue)}
+.kpi.green{background:#e8f6ee;border-color:#bce6cf}.kpi.green .val{color:#1f9d57}
+.kpi.orange{background:#fff5e9;border-color:#ffe2bb}.kpi.orange .val{color:#d9821f}
+.kpi.red{background:#fdecec;border-color:#f7c9c9}.kpi.red .val{color:var(--sys-red)}
+.dash2{display:grid;grid-template-columns:1.3fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:980px){.dash2{grid-template-columns:1fr}}
+.panel{background:#fff;border:1px solid var(--gray-200);border-radius:var(--r-card);box-shadow:var(--sh-s);padding:18px 20px}
+.panel h3{font-size:15px;font-weight:700;margin-bottom:14px}
+.barrow{display:flex;align-items:center;gap:10px;margin-bottom:11px;font-size:12.5px}
+.barrow.clk{cursor:pointer}.barrow.clk:hover .bl{color:var(--billy-blue)}
+.barrow .bl{width:74px;font-weight:600;color:var(--gray-700);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.barrow .bt{flex:1;height:18px;background:var(--gray-100);border-radius:5px;overflow:hidden}
+.barrow .bt>i{display:block;height:100%;background:var(--billy-blue);border-radius:5px}
+.barrow .bv{width:128px;text-align:right;font-variant-numeric:tabular-nums;color:var(--gray-700);flex-shrink:0}
+.policy{background:var(--billy-pink-soft);border:1px solid #f4dccf;border-radius:var(--r-md);padding:13px 15px;margin-bottom:16px;font-size:12.5px;line-height:1.7;color:var(--gray-800)}
+.policy b{color:var(--billy-pink-deep)}
+.policy ol{margin:6px 0 0 18px}
+.acct-row{display:flex;align-items:center;gap:10px;padding:11px 13px;border:1.4px solid var(--gray-200);border-radius:var(--r-md);margin-bottom:8px}
+.acct-row.primary{border-color:var(--billy-blue);background:var(--billy-blue-50)}
+.acct-row .ab{flex:1;min-width:0}
+.acct-row .abk{font-weight:700;font-size:13px}
+.acct-row .anum{font-size:12.5px;color:var(--gray-700)}
+@media(max-width:880px){.sidebar{display:none}.topbar{flex-direction:column}.search{margin-left:0;width:100%}.search input{width:100%}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo">₩</div><div class="tit">재무관리<small>베이비빌리 Finance</small></div></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="side-foot">
+      <div class="userchip"><div class="av" id="meAv">재</div><div style="flex:1;min-width:0"><div class="nm" id="meNm">데모 재무</div><div class="rl" id="meRl">재무 승인</div></div></div>
+      <div class="rolesel"><select id="roleSel" onchange="setRole(this.value)">
+        <option value="finance">재무 — 데모 재무</option>
+        <option value="exec">대표 — 데모 대표</option>
+        <option value="viewer">조회 — 데모 조회</option>
+        <option value="lead">팀장 — 데모 팀장M(M&E)</option>
+        <option value="member">직원 — 데모 직원1(M&E)</option>
+      </select></div>
+      <div class="demo-note">미리보기(데모) · 역할 전환 가능 — 실배포 시 로그인 인증으로 대체</div>
+    </div>
+  </aside>
+  <div class="main">
+    <div class="topbar"><div class="page-h"><h1 id="pgTitle">대시보드</h1><p id="pgDesc"></p></div><div class="topbar-actions" id="pgActions"></div></div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+<script>
+/* =========================================================================
+   재무관리 시스템 — 프로토타입 · 데모(Mock)
+   대시보드(기간/클릭랜딩) · 이체요청 · 유류비신청 · 세금계산서 · 거래처 관리
+   권한 5단계 / 승인 라우팅(1천만+→대표) / 상태 4단계 / 다중필터 / 정렬 / 이상거래 / 정책
+   ========================================================================= */
+const THRESHOLD=10000000;
+let _xlsxP=null;
+function loadXLSX(){if(window.XLSX)return Promise.resolve();if(_xlsxP)return _xlsxP;_xlsxP=new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s);});return _xlsxP;}
+/* ===== Supabase 연결 (HR과 동일 프로젝트). 로컬=데모, 배포·?supa=1=실DB ===== */
+const SUPA_URL='https://gziprrcxfcfgonyxuxui.supabase.co';
+const SUPA_KEY='sb_publishable_r6KPdTci2rtyCCAEtjuspQ_7Nhs0pRj';
+const FORCE_SUPA=/[?&]supa=1/.test(location.search);
+const IS_SUPA=(typeof supabase!=='undefined')&&(FORCE_SUPA||(location.hostname!=='localhost'&&location.hostname!=='127.0.0.1'&&location.hostname!==''));
+const sb=IS_SUPA?supabase.createClient(SUPA_URL,SUPA_KEY):null;
+let SUPA_USER=null; // 로그인 사용자 {email,role,name,team,av,rl}
+const I={
+  plus:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  x:'<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  check:'<svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>',
+  search:'<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>',
+  filter:'<svg viewBox="0 0 24 24"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>',
+  copy:'<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+  eye:'<svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>',
+  trash:'<svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>',
+  download:'<svg viewBox="0 0 24 24" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>',
+  car:'<svg viewBox="0 0 24 24"><path d="M5 17h14M5 17a2 2 0 1 0 0 .01M19 17a2 2 0 1 0 0 .01M3 13l2-6h14l2 6v4H3v-4z"/></svg>',
+  empty:'<svg viewBox="0 0 24 24" stroke="currentColor"><path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2Z"/></svg>',
+  m_dash:'<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>',
+  m_money:'<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9v6M18 9v6"/></svg>',
+  m_doc:'<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg>',
+  m_vendor:'<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-3"/><path d="M9 9v.01M9 12v.01M9 15v.01"/></svg>',
+};
+/* ---------- 헬퍼 ---------- */
+function escH(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function addDays(n){const d=new Date();d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function daysBetween(a,b){return Math.round((new Date(a)-new Date(b))/86400000);}
+function uid(p){return (p||'id')+Math.random().toString(36).slice(2,8);}
+function won(n){return (Number(n)||0).toLocaleString('ko-KR');}
+function comma(s){return String(s||'').replace(/[^0-9]/g,'').replace(/\B(?=(\d{3})+(?!\d))/g,',');}
+function val(id){const el=document.getElementById(id);return el?el.value.trim():'';}
+function numVal(id){return Number(String(val(id)).replace(/[^0-9]/g,''))||0;}
+function digits(s){return String(s||'').replace(/[^0-9]/g,'');}
+const BANKS=['국민','신한','우리','하나','기업','농협','SC제일','카카오뱅크','토스뱅크','케이뱅크','새마을금고','우체국','부산','경남','대구','산업','씨티'];
+const CATEGORIES=['외주·용역비','물품대금','광고·마케팅비','유류비','환불','임대료','복리후생','경비정산','구독료','기타'];
+const CURRENCIES=['원','USD','JPY','EUR'];
+const PSTATUS={requested:['지급대기','badge-pending'],paid:['지급완료','badge-paid'],rejected:['반려','badge-rejected'],canceled:['취소','badge-canceled']};
+const ISTATUS={requested:['발행대기','badge-pending'],issued:['발행완료','badge-paid'],rejected:['반려','badge-rejected'],canceled:['취소','badge-canceled']};
+const POLICY_HTML='<div class="policy"><b>📌 이체·발행 정책 (꼭 확인)</b><ol>'
+ +'<li>세금계산서(매입) <b>작성일 = 실제 이체 당일</b>로 작성</li>'
+ +'<li>세금계산서(매입·매출)는 <b>당월분 → 익월 10일까지</b> 발행 가능, 이후 발행 불가(가산세)</li>'
+ +'<li>발행 전 <b>공급가액·세액·합계금액</b> 한 번 더 확인</li>'
+ +'<li><b>발행 주체 = 실 예금주</b> 동일 여부 확인 후 요청</li></ol></div>';
+/* ---------- 세션/권한 ---------- */
+const ROLE_DEF={
+  finance:{name:'데모 재무',team:'Biz/GA',rl:'재무 승인',av:'재'},
+  exec:{name:'데모 대표',team:'Biz/GA',rl:'대표',av:'대'},
+  viewer:{name:'데모 조회',team:'',rl:'조회',av:'조'},
+  lead:{name:'데모 팀장M',team:'M&E',rl:'팀장(M&E)',av:'팀'},
+  member:{name:'데모 직원1',team:'M&E',rl:'직원(M&E)',av:'직'},
+};
+let ROLE='finance';
+const ME=()=>(IS_SUPA&&SUPA_USER)?SUPA_USER:ROLE_DEF[ROLE];
+const canViewAll=()=>['viewer','finance','exec'].includes(ROLE);
+const canApprove=()=>ROLE==='finance'; // 처리(지급완료/반려)는 데모 재무만
+const THRESHOLD_NOTIFY=THRESHOLD; // 1천만+ → 데모 대표 대표 메일 통지(승인 아님)
+const isBig=r=>!!(r&&r.unit==='원'&&(Number(r.amount)||0)>=THRESHOLD);
+const TEAMS_ALL=['Biz/GA','BRAND','Product','커머스','M&E'];
+function approverFor(requester,amount){const big=(Number(amount)||0)>=THRESHOLD;if(requester==='데모 재무'||big)return requester==='데모 대표'?'데모 재무':'데모 대표';return '데모 재무';}
+/* ===================== 거래처(데모) ===================== */
+const VENDORS=[
+  {id:'v1',name:'(주)폴레드패밀리',bizNo:'2478601655',team:'M&E',email:'tax@poled.demo',accounts:[{bank:'기업',account:'420-097688-04-023',holder:'(주)폴레드패밀리',primary:true},{bank:'기업',account:'523-062129-01-017',holder:'(주)폴레드패밀리'}],cnt:30,avg:1200000,max:7000000,lastDate:addDays(-9),unit:'원'},
+  {id:'v2',name:'블루박스물류',team:'커머스',email:'',accounts:[{bank:'우리',account:'1002-345-678901',holder:'블루박스물류',primary:true}],cnt:8,avg:520000,max:900000,lastDate:addDays(-13),unit:'원'},
+  {id:'v3',name:'(주)제이디상사',bizNo:'8361400876',team:'BRAND',email:'jd@thejd.demo',accounts:[{bank:'국민',account:'01234-56-789012',holder:'(주)제이디상사',primary:true},{bank:'신한',account:'110-222-333444',holder:'(주)제이디상사'}],cnt:24,avg:2200000,max:5000000,lastDate:addDays(-5),unit:'원'},
+  {id:'v4',name:'(주)에이원베이비',bizNo:'2018618451',team:'커머스',email:'shlee@aone.demo',accounts:[{bank:'우리',account:'1005-501-763342',holder:'(주)에이원베이비',primary:true}],cnt:35,avg:380000,max:1060000,lastDate:addDays(-7),unit:'원'},
+  {id:'v5',name:'카라멜파트너스',bizNo:'7378803131',team:'Biz/GA',email:'acc@caramel.demo',accounts:[{bank:'신한',account:'100-031-221388',holder:'카라멜파트너스',primary:true}],cnt:12,avg:165000000,max:198000000,lastDate:addDays(-3),unit:'원'},
+  {id:'v6',name:'타불라코리아',bizNo:'6628800581',team:'Product',email:'korea-ap@taboola.demo',accounts:[{bank:'외화',account:'123-082001-01-016',holder:'TABOOLA KOREA',primary:true}],cnt:14,avg:1500,max:1700,lastDate:addDays(-8),unit:'USD'},
+  {id:'v7',name:'그린오피스임대',team:'Biz/GA',email:'',accounts:[{bank:'우리',account:'1005-203-509991',holder:'그린오피스임대',primary:true}],cnt:18,avg:2200000,max:2200000,lastDate:addDays(-30),unit:'원'},
+  {id:'v8',name:'유팡데모',team:'Biz/GA',email:'',accounts:[{bank:'신한',account:'140-014-365846',holder:'유팡',primary:true},{bank:'신한',account:'100-021-645176',holder:'유팡'},{bank:'신한',account:'140-007-496608',holder:'유팡'}],cnt:142,avg:980000,max:8100000,lastDate:addDays(-2),unit:'원'},
+  {id:'v9',name:'데모카드(법인)',team:'Biz/GA',email:'',accounts:[{bank:'신한',account:'333-02-983634',holder:'데모카드',primary:true}],cnt:33,avg:12000000,max:35000000,lastDate:addDays(-4),unit:'원'},
+];
+function findVendor(name){const k=String(name||'').replace(/\(주\)|주식회사|\s|㈜/g,'');return VENDORS.find(v=>v.name.replace(/\(주\)|주식회사|\s|㈜/g,'')===k);}
+/* ===================== 거래 데이터(데모) ===================== */
+const DB={payout:[],invoice:[]};
+(function seed(){
+  const P=(o)=>{o.id=uid('p');o.applied=o.applied||today();o.approver=approverFor(o.requester,o.amount);DB.payout.push(o);};
+  P({requester:'데모 직원1',team:'M&E',payee:'(주)폴레드패밀리',bank:'기업',account:'420-097688-04-023',amount:1100000,unit:'원',category:'광고·마케팅비',purpose:'폴레드 라이브 광고비',status:'requested',hasTax:true,applied:addDays(-1)});
+  P({requester:'데모 직원1',team:'M&E',payee:'(주)폴레드패밀리',bank:'기업',account:'761-052119-01-555',amount:1100000,unit:'원',category:'광고·마케팅비',purpose:'폴레드 라이브 광고비(계좌 변경됨)',status:'requested',hasTax:true,applied:today()});
+  P({requester:'데모 직원3',team:'BRAND',payee:'뉴비전마케팅',bank:'국민',account:'987-65-432100',amount:2000000,unit:'원',category:'광고·마케팅비',purpose:'신규 0원 이벤트 제휴비',status:'requested',hasTax:false,applied:today()});
+  P({requester:'데모 직원2',team:'M&E',payee:'블루박스물류',bank:'우리',account:'1002-345-678901',amount:4800000,unit:'원',category:'물품대금',purpose:'택배 박스 대량 발주',status:'requested',hasTax:true,applied:today()});
+  P({requester:'데모 팀장C',team:'커머스',payee:'(주)에이원베이비',bank:'우리',account:'1005-501-763342',amount:550000,unit:'원',category:'외주·용역비',purpose:'라이브방송 수수료 정산',status:'requested',hasTax:true,applied:addDays(-1)});
+  P({requester:'데모 재무',team:'Biz/GA',payee:'카라멜파트너스',bank:'신한',account:'100-031-221388',amount:165000000,unit:'원',category:'광고·마케팅비',purpose:'마케팅비(월정산)',status:'requested',hasTax:true,applied:today()});
+  P({requester:'데모 팀장P',team:'Product',payee:'타불라코리아',bank:'외화',account:'123-082001-01-016',amount:1200,unit:'USD',category:'광고·마케팅비',purpose:'타불라 광고비(외화)',status:'requested',hasTax:true,applied:today()});
+  P({requester:'데모 직원1',team:'M&E',payee:'데모 직원1',bank:'국민',account:'012-3456-7890',amount:48000,unit:'원',category:'유류비',purpose:'거래처 미팅 출장',status:'requested',hasTax:false,applied:today(),fuel:{from:'사무실(역삼)',to:'코엑스',roundTrip:true,km:24,carNo:'12가3456',visit:'베이비페어 미팅'}});
+  P({requester:'데모 직원2',team:'M&E',payee:'그린오피스임대',bank:'우리',account:'1005-203-509991',amount:2200000,unit:'원',category:'임대료',purpose:'7월 사무실 임대료',status:'paid',paidAt:addDays(-1),hasTax:true,applied:addDays(-4)});
+  P({requester:'데모 직원4',team:'BRAND',payee:'(주)제이디상사',bank:'국민',account:'01234-56-789012',amount:1500000,unit:'원',category:'물품대금',purpose:'베이비페어 제품 매입',status:'paid',paidAt:addDays(-2),hasTax:true,applied:addDays(-5)});
+  // 지난달/지지난달(기간 필터 시연용)
+  P({requester:'데모 직원1',team:'M&E',payee:'(주)폴레드패밀리',bank:'기업',account:'420-097688-04-023',amount:1000000,unit:'원',category:'광고·마케팅비',purpose:'5월 광고비',status:'paid',paidAt:addDays(-40),hasTax:true,applied:addDays(-42)});
+  P({requester:'데모 팀장C',team:'커머스',payee:'(주)에이원베이비',bank:'우리',account:'1005-501-763342',amount:711650,unit:'원',category:'외주·용역비',purpose:'5월 라이브 수수료',status:'paid',paidAt:addDays(-45),hasTax:true,applied:addDays(-46)});
+  P({requester:'데모 재무',team:'Biz/GA',payee:'카라멜파트너스',bank:'신한',account:'100-031-221388',amount:165000000,unit:'원',category:'광고·마케팅비',purpose:'4월 마케팅비',status:'paid',paidAt:addDays(-70),hasTax:true,applied:addDays(-72)});
+  const V=(o)=>{o.id=uid('v');o.applied=o.applied||today();o.tax=Math.round(o.supply*0.1);o.total=o.supply+o.tax;o.approver=approverFor(o.requester,o.total);DB.invoice.push(o);};
+  V({requester:'데모 직원1',team:'M&E',saleType:'매출',company:'(주)베스트마트',bizNo:'1208801234',ceo:'김상호',email:'tax@bestmart.demo',writeDate:'2026-05-31',itemName:'유아용품 납품(5월)',supply:3000000,status:'requested'});
+  V({requester:'데모 팀장B',team:'BRAND',saleType:'매출',company:'(주)트루비전',bizNo:'8718103354',ceo:'정대표',email:'sj@truevision.demo',writeDate:'2026-05-31',itemName:'5월 러베 오프라인 판매대금',supply:4072773,status:'requested'});
+  V({requester:'데모 팀장C',team:'커머스',saleType:'매출',company:'(주)에이원베이비',bizNo:'2018618451',ceo:'이에이원',email:'shlee@aone.demo',writeDate:'2026-04-30',itemName:'4월 라이브방송 수수료',supply:646955,status:'issued',issuedAt:'2026-05-04'});
+})();
+function payDup(r){return r.payee+'|'+digits(r.account)+'|'+r.amount;}
+DB.templates=[]; // 정기/반복 이체 템플릿
+let LOCKED=new Set(); // 마감된 'YYYY-MM'
+const WH_RATES={'사업소득 (3.3%)':0.033,'기타소득 (8.8%)':0.088};
+function isLockedMonth(d){return !!d&&LOCKED.has(String(d).slice(0,7));}
+function toggleLock(ym){sv('fin_toggle_lock',{p_ym:ym},()=>{if(LOCKED.has(ym))LOCKED.delete(ym);else LOCKED.add(ym);}).then(()=>{render();toast(LOCKED.has(ym)?ym+' 마감했어요.':ym+' 마감 해제했어요.','ok');});}
+function addMonth(d,n){const p=String(d).split('-');const x=new Date(+p[0],+p[1]-1+n,+p[2]);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');}
+/* ===================== 이상거래 엔진 ===================== */
+function scanPayout(r,excludeId){
+  const flags=[];const v=findVendor(r.payee);
+  if(r.category!=='유류비'){
+    if(!v){flags.push({s:'caution',t:'🆕 첫거래처',d:'과거 이력에 없는 거래처예요. 계좌·사업자 확인 권장.'});}
+    else{
+      const known=v.accounts.map(a=>digits(a.account));
+      if(r.account&&!known.includes(digits(r.account))){const pa=v.accounts.find(a=>a.primary)||v.accounts[0];flags.push({s:'warn',t:'🔁 계좌 변경',d:'기존 계좌와 달라요 (대표계좌 '+(pa?pa.bank+' '+pa.account:'-')+'). 변경 확인 필요.'});}
+      if(v.max&&r.amount>v.max*1.5&&r.unit===v.unit){flags.push({s:'warn',t:'📈 금액 급증',d:'평소보다 큰 금액 (과거 최대 '+won(v.max)+').'});}
+      if(v.avg&&r.amount<v.avg*0.2&&r.amount>0&&r.unit===v.unit){flags.push({s:'caution',t:'📉 금액 급감',d:'평소보다 작아요 (평균 '+won(v.avg)+'). 0 누락 등 오타 확인.'});}
+    }
+  }
+  const dup=DB.payout.find(x=>x.id!==excludeId&&x.id!==r.id&&x.status!=='canceled'&&x.status!=='rejected'&&payDup(x)===payDup(r)&&Math.abs(daysBetween(r.applied||today(),x.applied))<=14);
+  if(dup)flags.push({s:'warn',t:'♊ 중복 의심',d:'동일 거래처·계좌·금액이 14일 내 또 있어요.'});
+  if(r.unit!=='원'&&!r.account)flags.push({s:'caution',t:'💱 통화 확인',d:'외화 거래인데 계좌 정보가 비어 있어요.'});
+  return flags;
+}
+const flagHtml=f=>`<span class="flag ${f.s}" title="${escH(f.d)}">${f.t}</span>`;
+/* ===================== 상태/필터/기간 ===================== */
+let current='dashboard',_sel=new Set(),_q='',_filterOpen=false;
+let _sort={payout:{k:'date',dir:-1},invoice:{k:'date',dir:-1},vendors:{k:'cnt',dir:-1}};
+let FILTER={teams:new Set(),requesters:new Set(),statuses:new Set(),anomaly:false,big:false};
+let PERIOD='all'; // month | ytd | all
+function clearFilter(){FILTER={teams:new Set(),requesters:new Set(),statuses:new Set(),anomaly:false,big:false};_q='';}
+function inPeriod(d){if(PERIOD==='all'||!d)return true;const now=today();if(PERIOD==='ytd')return d>=now.slice(0,4)+'-01-01';if(PERIOD==='month')return d.slice(0,7)===now.slice(0,7);return true;}
+function roleScope(arr){if(IS_SUPA)return arr.slice();/* 실모드는 서버 RLS가 가시성 처리 */if(canViewAll())return arr.slice();if(ROLE==='lead')return arr.filter(r=>r.team===ME().team);return arr.filter(r=>r.requester===ME().name);}
+function visible(arr,kind){
+  let list=roleScope(arr);
+  if(FILTER.teams.size)list=list.filter(r=>FILTER.teams.has(r.team));
+  if(FILTER.requesters.size)list=list.filter(r=>FILTER.requesters.has(r.requester));
+  if(FILTER.statuses.size)list=list.filter(r=>FILTER.statuses.has(r.status));
+  if(FILTER.big&&kind==='payout')list=list.filter(r=>isBig(r));
+  if(FILTER.anomaly&&kind==='payout')list=list.filter(r=>r.status==='requested'&&scanPayout(r).length);
+  if(_q){const q=_q.toLowerCase();list=list.filter(r=>JSON.stringify(r).toLowerCase().includes(q));}
+  return list;
+}
+function tf(dim,v){const s=FILTER[dim];s.has(v)?s.delete(v):s.add(v);render();}
+function filterBar(kind){
+  const scoped=roleScope(kind==='payout'?DB.payout:DB.invoice);
+  const reqs=[...new Set(scoped.map(r=>r.requester).filter(Boolean))];
+  const sm=kind==='payout'?PSTATUS:ISTATUS;
+  const stats=Object.keys(sm);
+  const cnt=FILTER.teams.size+FILTER.requesters.size+FILTER.statuses.size+(FILTER.anomaly?1:0)+(FILTER.big?1:0);
+  let h=`<div class="filters"><button class="btn btn-sm ${cnt?'btn-line':'btn-secondary'}" onclick="_filterOpen=!_filterOpen;render()">${I.filter}<span>필터${cnt?' · '+cnt:''}</span></button>`;
+  if(cnt)h+=`<button class="btn btn-sm btn-secondary" onclick="clearFilter();render()">초기화</button>`;
+  h+=`<div class="search">${I.search}<input placeholder="검색(거래처·금액·적요·요청자)" value="${escH(_q)}" oninput="onSearch(this.value)"></div></div>`;
+  if(_filterOpen){
+    h+='<div class="card" style="padding:14px 16px;margin-bottom:14px">';
+    h+=`<div class="fgroup"><div class="fl">팀</div>${TEAMS_ALL.map(t=>`<button class="chip ${FILTER.teams.has(t)?'on':''}" onclick="tf('teams','${t}')">${escH(t)}</button>`).join('')}</div>`;
+    h+=`<div class="fgroup"><div class="fl">요청자</div>${reqs.map(r=>`<button class="chip ${FILTER.requesters.has(r)?'on':''}" onclick="tf('requesters','${escH(r)}')">${escH(r)}</button>`).join('')||'<span class="t-sub">없음</span>'}</div>`;
+    h+=`<div class="fgroup"><div class="fl">상태</div>${stats.map(s=>`<button class="chip ${FILTER.statuses.has(s)?'on':''}" onclick="tf('statuses','${s}')">${sm[s][0]}</button>`).join('')}</div>`;
+    if(kind==='payout')h+=`<div class="fgroup"><div class="fl">기타</div><button class="chip ${FILTER.anomaly?'on':''}" onclick="FILTER.anomaly=!FILTER.anomaly;render()">⚠️ 이상거래만</button><button class="chip ${FILTER.big?'on':''}" onclick="FILTER.big=!FILTER.big;render()">🔺 1천만+ (대표통지)</button></div>`;
+    h+='</div>';
+  }
+  return h;
+}
+/* ===================== 라우터 ===================== */
+const PAGES={
+  dashboard:{t:'대시보드',d:'팀별 이체·발행 현황과 이상거래를 한눈에 봅니다. (카드·항목 클릭 시 해당 목록으로 이동)',render:renderDashboard},
+  payout:{t:'이체 요청',d:'이체가 필요한 건을 신청·처리합니다. (즉시이체 — 요청 후 당일 처리)',render:renderPayout},
+  invoice:{t:'세금계산서 발행 요청',d:'세금계산서 발행 요청을 등록·처리합니다.',render:renderInvoice},
+  vendors:{t:'거래처 관리',d:'사업자번호로 통합된 거래처와 계좌를 관리합니다.',render:renderVendors},
+};
+const NAV=[['dashboard','대시보드','m_dash'],['payout','이체 요청','m_money'],['invoice','세금계산서 발행','m_doc'],['vendors','거래처 관리','m_vendor']];
+function buildNav(){
+  let h='<div class="nav-label">재무 업무</div>';
+  NAV.forEach(([k,label,ic])=>{
+    if(k==='vendors'&&!canViewAll())return;
+    let dot='';
+    if(canApprove()&&(k==='payout'||k==='invoice')){const arr=k==='payout'?DB.payout:DB.invoice;const c=arr.filter(r=>r.status==='requested').length;if(c)dot=`<span class="dot">${c}</span>`;}
+    h+=`<div class="nav-item${current===k?' active':''}" onclick="go('${k}')">${I[ic]}<span>${label}</span>${dot}</div>`;
+  });
+  document.getElementById('nav').innerHTML=h;
+}
+function go(k){current=k;_sel=new Set();_q='';_filterOpen=false;clearFilter();render();}
+function landing(page,opts){clearFilter();opts=opts||{};if(opts.team)FILTER.teams.add(opts.team);if(opts.status)FILTER.statuses.add(opts.status);if(opts.big)FILTER.big=true;if(opts.anomaly)FILTER.anomaly=true;if(opts.payee)_q=opts.payee;current=page;_sel=new Set();_filterOpen=true;render();}
+function setRole(r){ROLE=r;_sel=new Set();clearFilter();if(current==='vendors'&&!canViewAll())current='dashboard';render();}
+function render(){
+  const p=PAGES[current];
+  document.getElementById('pgTitle').textContent=p.t;document.getElementById('pgDesc').textContent=p.d;
+  let act='';
+  if(current==='payout')act=`<button class="btn btn-line btn-sm" onclick="openTemplates()">🔁 정기</button><button class="btn btn-line btn-sm" onclick="openWHForm()">3.3% 지급</button><button class="btn btn-line btn-sm" onclick="openFuelForm()">${I.car}<span>유류비</span></button><button class="btn btn-primary" onclick="openPayoutForm()">${I.plus}<span>새 이체 요청</span></button>`;
+  if(current==='invoice')act=`<button class="btn btn-primary" onclick="openInvoiceForm()">${I.plus}<span>새 발행 요청</span></button>`;
+  if(current==='vendors')act=`<button class="btn btn-line" onclick="exportVendors()">${I.download}<span>거래처 엑셀</span></button>`;
+  document.getElementById('pgActions').innerHTML=act;
+  document.getElementById('meAv').textContent=ME().av;document.getElementById('meNm').textContent=ME().name;document.getElementById('meRl').textContent=ME().rl;
+  const _rs=document.getElementById('roleSel');if(_rs)_rs.value=ROLE;
+  buildNav();p.render();
+}
+function onSearch(v){_q=v;const c=document.getElementById('content');/* 검색은 리렌더 */render();const inp=c.querySelector('.search input');if(inp){inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length);}}
+function setSort(page,k){const s=_sort[page];if(s.k===k)s.dir*=-1;else{s.k=k;s.dir=k==='date'?-1:1;}render();}
+function sortIcon(page,k){const s=_sort[page];return s.k===k?`<span class="ar">${s.dir>0?'▲':'▼'}</span>`:'';}
+function applySort(list,page,amtKey,nameKey){const s=_sort[page];list.sort((a,b)=>{let r=0;if(s.k==='amount')r=(a[amtKey]||0)-(b[amtKey]||0);else if(s.k==='name')r=String(a[nameKey]||'').localeCompare(String(b[nameKey]||''),'ko');else r=String(a.applied||'').localeCompare(String(b.applied||''));return r*s.dir||(b.id>a.id?1:-1);});return list;}
+function toggleSel(id){_sel.has(id)?_sel.delete(id):_sel.add(id);render();}
+function toggleAll(page){const list=visible(page==='payout'?DB.payout:DB.invoice,page);const ids=list.map(r=>r.id);_sel=new Set(ids.every(i=>_sel.has(i))?[]:ids);render();}
+/* ===================== 대시보드 ===================== */
+function periodSel(){return `<div class="seg" style="margin-bottom:14px"><button class="${PERIOD==='month'?'on':''}" onclick="PERIOD='month';render()">이번달</button><button class="${PERIOD==='ytd'?'on':''}" onclick="PERIOD='ytd';render()">올해</button><button class="${PERIOD==='all'?'on':''}" onclick="PERIOD='all';render()">전체</button></div>`;}
+function renderDashboard(){
+  const c=document.getElementById('content');
+  const P=DB.payout.filter(r=>inPeriod(r.applied)),Iv=DB.invoice.filter(r=>inPeriod(r.applied));
+  const krw=P.filter(r=>r.unit==='원');
+  const totalAmt=krw.reduce((s,r)=>s+r.amount,0);
+  const pending=P.filter(r=>r.status==='requested');
+  const pendKRW=pending.filter(r=>r.unit==='원').reduce((s,r)=>s+r.amount,0);
+  const paid=P.filter(r=>r.status==='paid');
+  const bigWait=P.filter(r=>r.status==='requested'&&isBig(r));
+  let anomCnt=0;P.forEach(r=>{if(r.status==='requested'&&scanPayout(r).length)anomCnt++;});
+  const teams={};P.forEach(r=>{if(r.unit!=='원')return;(teams[r.team]=teams[r.team]||{cnt:0,sum:0});teams[r.team].cnt++;teams[r.team].sum+=r.amount;});
+  const teamArr=Object.entries(teams).sort((a,b)=>b[1].sum-a[1].sum);const tmax=Math.max(1,...teamArr.map(t=>t[1].sum));
+  const vend={};krw.forEach(r=>{(vend[r.payee]=vend[r.payee]||0);vend[r.payee]+=r.amount;});
+  const vtop=Object.entries(vend).sort((a,b)=>b[1]-a[1]).slice(0,5);const vmax=Math.max(1,...vtop.map(v=>v[1]));
+  let h=`<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">${periodSel().replace(/ style="margin-bottom:14px"/,'')}${canApprove()?`<button class="btn btn-sm ${LOCKED.has(today().slice(0,7))?'btn-danger':'btn-secondary'}" onclick="toggleLock('${today().slice(0,7)}')">${LOCKED.has(today().slice(0,7))?'🔒 '+today().slice(0,7)+' 마감됨 — 해제':today().slice(0,7)+' 마감하기'}</button>`:''}</div>`;
+  h+=`<div class="kpis">
+    <div class="kpi blue click" onclick="landing('payout',{})"><div class="lbl">이체 요청(원화 합계)</div><div class="val">${won(totalAmt)}<span style="font-size:13px">원</span></div></div>
+    <div class="kpi orange click" onclick="landing('payout',{status:'requested'})"><div class="lbl">지급 대기</div><div class="val">${pending.length}건</div></div>
+    <div class="kpi click" onclick="landing('payout',{status:'requested'})"><div class="lbl">지급대기 금액</div><div class="val">${won(pendKRW)}<span style="font-size:13px">원</span></div></div>
+    <div class="kpi red click" onclick="landing('payout',{big:true,status:'requested'})"><div class="lbl">1천만+ (대표 통지)</div><div class="val">${bigWait.length}건</div></div>
+    <div class="kpi green click" onclick="landing('payout',{status:'paid'})"><div class="lbl">지급 완료</div><div class="val">${paid.length}건</div></div>
+    <div class="kpi ${anomCnt?'red':'green'} click" onclick="landing('payout',{anomaly:true})"><div class="lbl">이상거래 감지</div><div class="val">${anomCnt}건</div></div>
+  </div>`;
+  h+=`<div class="dash2">
+    <div class="panel"><h3>팀별 이체 현황 (원화) · 클릭 시 이동</h3>${teamArr.map(([t,v])=>`<div class="barrow clk" onclick="landing('payout',{team:'${t}'})"><div class="bl">${escH(t)}</div><div class="bt"><i style="width:${Math.max(3,100*v.sum/tmax)}%"></i></div><div class="bv">${won(v.sum)} · ${v.cnt}건</div></div>`).join('')||'<div class="t-sub">데이터 없음</div>'}</div>
+    <div class="panel"><h3>상태 분포</h3>${['requested','paid','rejected'].map(st=>{const n=P.filter(r=>r.status===st).length;return `<div class="barrow clk" onclick="landing('payout',{status:'${st}'})"><div class="bl">${PSTATUS[st][0]}</div><div class="bt"><i style="width:${Math.max(3,100*n/Math.max(1,P.length))}%"></i></div><div class="bv">${n}건</div></div>`;}).join('')}<div class="hr"></div><div style="font-size:12.5px;color:var(--gray)">세금계산서 발행요청 ${Iv.length}건 · 발행완료 ${Iv.filter(r=>r.status==='issued').length}건</div></div>
+  </div>`;
+  h+=`<div class="dash2">
+    <div class="panel"><h3>거래처 TOP (금액) · 클릭 시 이동</h3>${vtop.map(([n,s])=>`<div class="barrow clk" onclick="landing('payout',{payee:'${escH(n).replace(/'/g,"")}'})"><div class="bl" style="width:120px">${escH(n)}</div><div class="bt"><i style="width:${Math.max(3,100*s/vmax)}%"></i></div><div class="bv">${won(s)}</div></div>`).join('')||'<div class="t-sub">데이터 없음</div>'}</div>
+    <div class="panel"><h3>⚠️ 이상거래 검토 필요</h3>${(function(){let rows=P.filter(r=>r.status==='requested').map(r=>({r,f:scanPayout(r)})).filter(x=>x.f.length);if(!rows.length)return '<div class="t-sub">감지된 이상 없음 👍</div>';return rows.slice(0,6).map(x=>`<div style="padding:8px 0;border-bottom:1px solid var(--gray-100);cursor:pointer" onclick="viewPayout('${x.r.id}')"><div class="t-name" style="font-size:13px">${escH(x.r.payee)} · ${won(x.r.amount)}${x.r.unit==='원'?'원':' '+x.r.unit}</div><div>${x.f.map(flagHtml).join('')}</div></div>`).join('');})()}</div>
+  </div>`;
+  c.innerHTML=h;
+}
+/* ===================== 이체 요청 ===================== */
+function renderPayout(){
+  const c=document.getElementById('content');
+  let list=applySort(visible(DB.payout,'payout'),'payout','amount','payee');
+  const mineApprove=canApprove();
+  const pend=list.filter(r=>r.status==='requested');
+  let h=`<div class="kpis" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+    <div class="kpi orange"><div class="lbl">지급 대기</div><div class="val">${pend.length}건</div></div>
+    <div class="kpi blue"><div class="lbl">표시 건수</div><div class="val">${list.length}건</div></div>
+    <div class="kpi"><div class="lbl">원화 합계</div><div class="val">${won(list.filter(r=>r.unit==='원').reduce((s,r)=>s+r.amount,0))}<span style="font-size:12px">원</span></div></div>
+  </div>`;
+  h+=filterBar('payout');
+  if(mineApprove&&_sel.size){const ss=list.filter(r=>_sel.has(r.id));h+=`<div class="batchbar"><span class="sel">${_sel.size}건 선택 · ${won(ss.filter(r=>r.unit==='원').reduce((s,r)=>s+r.amount,0))}원</span><button class="btn btn-sm btn-line" onclick="batchPayout('paid')">${I.check}<span>지급완료 표시</span></button><button class="btn btn-sm btn-primary" onclick="exportPayout()">${I.download}<span>은행 이체 엑셀</span></button><button class="btn btn-sm btn-secondary" onclick="_sel=new Set();render()">해제</button></div>`;}
+  if(!list.length){h+=`<div class="card"><div class="empty">${I.empty}<div>표시할 이체 요청이 없습니다.</div></div></div>`;c.innerHTML=h;return;}
+  h+='<div class="card"><div class="table-wrap"><table><thead><tr>';
+  if(mineApprove)h+=`<th style="width:36px"><input type="checkbox" class="cbx" ${list.every(r=>_sel.has(r.id))?'checked':''} onclick="toggleAll('payout')"></th>`;
+  h+=`<th class="sortable" onclick="setSort('payout','name')">거래처/예금주${sortIcon('payout','name')}</th><th>요청자/팀</th><th>은행·계좌</th><th class="sortable" style="text-align:right" onclick="setSort('payout','amount')">금액${sortIcon('payout','amount')}</th><th>이상</th><th>통지</th><th>상태</th><th></th></tr></thead><tbody>`;
+  list.forEach(r=>{
+    const st=PSTATUS[r.status]||['?',''];const flags=r.status==='requested'?scanPayout(r):[];
+    h+='<tr>';
+    if(mineApprove)h+=`<td><input type="checkbox" class="cbx" ${_sel.has(r.id)?'checked':''} onclick="toggleSel('${r.id}')"></td>`;
+    h+=`<td><div class="t-name">${escH(r.payee)} ${r.category==='유류비'?'<span class="tag tag-fuel">유류비</span>':''}</div><div class="t-sub">${escH(r.category||'')} · ${escH(r.applied)}</div></td>`;
+    h+=`<td>${escH(r.requester)}<div class="t-sub">${escH(r.team||'')}</div></td>`;
+    h+=`<td>${escH(r.bank||'-')}<div class="t-sub num">${escH(r.account||'')}</div></td>`;
+    h+=`<td style="text-align:right"><span class="amt">${won(r.amount)}</span>${r.unit!=='원'?' <span class="t-sub">'+r.unit+'</span>':''}</td>`;
+    h+=`<td style="max-width:150px;white-space:normal">${flags.length?flags.map(flagHtml).join(''):'<span class="t-sub">–</span>'}</td>`;
+    h+=`<td>${isBig(r)?'<span class="tag tag-blue">🔺 대표통지</span>':'<span class="t-sub">–</span>'}</td>`;
+    h+=`<td><span class="badge ${st[1]}">${st[0]}</span></td>`;
+    h+='<td><div class="rowact">';
+    h+=`<button class="iconbtn" title="상세" onclick="viewPayout('${r.id}')">${I.eye}</button>`;
+    h+=`<button class="iconbtn" title="복제" onclick="clonePayout('${r.id}')">${I.copy}</button>`;
+    if(!canViewAll()&&r.requester===ME().name&&r.status==='requested')h+=`<button class="iconbtn" title="철회" onclick="cancelPayout('${r.id}')">${I.trash}</button>`;
+    h+='</div></td></tr>';
+  });
+  h+='</tbody></table></div></div>';
+  c.innerHTML=h;
+}
+function openPayoutForm(seed){
+  seed=seed||{};
+  const banks=BANKS.map(b=>`<option ${seed.bank===b?'selected':''}>${b}</option>`).join('');
+  const cats=CATEGORIES.filter(x=>x!=='유류비').map(x=>`<option ${seed.category===x?'selected':''}>${x}</option>`).join('');
+  const cur=CURRENCIES.map(x=>`<option ${seed.unit===x?'selected':''}>${x}</option>`).join('');
+  modal('새 이체 요청','wide',POLICY_HTML+`
+    <div class="form-row"><label>거래처/예금주 <span class="req">*</span><span class="hint">검색 후 선택 시 계좌 자동입력</span></label><input class="input" id="f_payee" value="${escH(seed.payee||'')}" placeholder="거래처명" list="vlist" oninput="onPayeePick()"><datalist id="vlist">${VENDORS.map(v=>`<option value="${escH(v.name)}">`).join('')}</datalist></div>
+    <div class="f2"><div class="form-row"><label>은행 <span class="req">*</span></label><select class="input" id="f_bank">${banks}</select></div><div class="form-row"><label>계좌번호 <span class="req">*</span></label><input class="input num" id="f_account" value="${escH(seed.account||'')}" placeholder="- 없이 숫자" oninput="dupHint()"></div></div>
+    <div class="f2"><div class="form-row"><label>금액 <span class="req">*</span></label><input class="input num" id="f_amount" value="${seed.amount?won(seed.amount):''}" placeholder="0" oninput="this.value=comma(this.value);dupHint()"></div><div class="form-row"><label>통화</label><select class="input" id="f_unit">${cur}</select></div></div>
+    <div class="form-row"><label>분류</label><select class="input" id="f_cat">${cats}</select></div>
+    <div class="form-row"><label>적요/메모</label><textarea class="input" id="f_purpose" placeholder="예: 6월 광고비 정산">${escH(seed.purpose||'')}</textarea></div>
+    <div class="form-row"><label>증빙 (Dropbox 링크)<span class="hint">선택 · 거래명세서·견적서 등</span></label><input class="input" id="f_evidence" value="${escH(seed.evidence||'')}" placeholder="https://www.dropbox.com/..."></div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--gray-700)"><input type="checkbox" class="cbx" id="f_tax">세금계산서 발행 대상 (발행주체=예금주 확인함)</label>
+    <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--gray-700);margin-top:8px"><input type="checkbox" class="cbx" id="f_recur" onchange="var n=document.getElementById('f_recurBox');n.style.display=this.checked?'block':'none'">🔁 매월 정기 이체로 등록</label>
+    <div class="form-row" id="f_recurBox" style="display:none;margin-top:8px"><label>반복 횟수(총 N회) <span class="hint">이번 건 포함</span></label><input class="input num" id="f_recurN" value="3"></div>
+    <div id="f_anom" style="margin-top:10px"></div>
+  `,`<button class="btn btn-secondary" onclick="closeModal()">취소</button><button class="btn btn-primary" onclick="submitPayout()">요청 등록</button>`);
+  if(seed.unit)document.getElementById('f_unit').value=seed.unit;
+  dupHint();
+}
+function onPayeePick(){const v=findVendor(val('f_payee'));if(v){const pa=v.accounts.find(a=>a.primary)||v.accounts[0];if(pa){document.getElementById('f_bank').value=pa.bank;document.getElementById('f_account').value=pa.account;}document.getElementById('f_unit').value=v.unit;}dupHint();}
+function dupHint(){const el=document.getElementById('f_anom');if(!el)return;const amt=numVal('f_amount');const unit=val('f_unit')||'원';const r={payee:val('f_payee'),account:val('f_account'),amount:amt,unit,category:val('f_cat'),applied:today(),requester:ME().name};if(!r.payee){el.innerHTML='';return;}const flags=scanPayout(r);const big=unit==='원'&&amt>=THRESHOLD;el.innerHTML=(flags.length?'<div style="margin-bottom:6px">'+flags.map(flagHtml).join('')+'</div>':'')+(big?`<div class="preview-box"><span>🔺 1천만 이상</span><b>데모 대표 대표에게 메일 통지됩니다</b></div>`:'');}
+function submitPayout(){
+  const r={id:uid('p'),requester:ME().name,team:ME().team,payee:val('f_payee'),bank:val('f_bank'),account:val('f_account'),amount:numVal('f_amount'),unit:val('f_unit')||'원',category:val('f_cat'),purpose:val('f_purpose'),evidence:val('f_evidence'),hasTax:document.getElementById('f_tax').checked,status:'requested',applied:today(),paidAt:''};
+  if(!r.payee||!r.account||!r.amount){toast('거래처·계좌·금액은 필수예요.','err');return;}
+  if(isLockedMonth(today())){toast(today().slice(0,7)+'은 마감되어 신청할 수 없어요.','err');return;}
+  r.approver=approverFor(r.requester,r.amount);
+  const recur=document.getElementById('f_recur').checked,total=Math.max(1,numVal('f_recurN')||1);
+  const warns=scanPayout(r).filter(f=>f.s==='warn');
+  const go=()=>{
+    sv('fin_submit_payout',{p:payoutPayload(r,recur?total:0)},()=>{
+      DB.payout.unshift(r);
+      if(recur&&total>1)DB.templates.push({id:uid('t'),requester:r.requester,team:r.team,payee:r.payee,bank:r.bank,account:r.account,amount:r.amount,category:r.category,purpose:r.purpose,hasTax:r.hasTax,total,done:1,nextDate:addMonth(today(),1)});
+    }).then(()=>{closeModal();render();toast(recur&&total>1?'이체 요청 + 정기('+total+'회) 등록했어요.':'이체 요청을 등록했어요.','ok');});
+  };
+  if(warns.length){closeModal();confirmModal('⚠️ 이상 신호 확인',warns.map(f=>'<b>'+f.t+'</b> — '+escH(f.d)).join('<br>')+'<br><br>그래도 등록할까요?',go);return;}
+  go();
+}
+/* 유류비 신청 — 본인 정산(이체) 요청 */
+function openFuelForm(){
+  modal('유류비 / 출장비 신청','wide',`<div class="policy" style="background:var(--billy-blue-50);border-color:var(--billy-blue-100)"><b style="color:var(--billy-blue)">🚗 본인 계좌로 정산되는 이체 요청이에요.</b> 이동 경로·목적을 입력해 주세요.</div>
+    <div class="f2"><div class="form-row"><label>일자 <span class="req">*</span></label><input class="input" type="date" id="x_date" value="${today()}"></div><div class="form-row"><label>차량번호</label><input class="input" id="x_car" placeholder="12가3456"></div></div>
+    <div class="f2"><div class="form-row"><label>출발지 <span class="req">*</span></label><input class="input" id="x_from" placeholder="예: 사무실(역삼)"></div><div class="form-row"><label>도착지 <span class="req">*</span></label><input class="input" id="x_to" placeholder="예: 코엑스"></div></div>
+    <div class="f2"><div class="form-row"><label>방문처/목적 <span class="req">*</span></label><input class="input" id="x_visit" placeholder="예: 베이비페어 거래처 미팅"></div><div class="form-row"><label>거리(km)</label><input class="input num" id="x_km" placeholder="왕복 포함" oninput="this.value=this.value.replace(/[^0-9.]/g,'')"></div></div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--gray-700);margin-bottom:13px"><input type="checkbox" class="cbx" id="x_round" checked>왕복</label>
+    <div class="form-row"><label>청구 금액(원) <span class="req">*</span><span class="hint">영수증/유류비 기준</span></label><input class="input num" id="x_amount" placeholder="0" oninput="this.value=comma(this.value)"></div>
+    <div class="f2"><div class="form-row"><label>입금 은행 <span class="req">*</span></label><select class="input" id="x_bank">${BANKS.map(b=>`<option>${b}</option>`).join('')}</select></div><div class="form-row"><label>본인 계좌번호 <span class="req">*</span></label><input class="input num" id="x_acc" placeholder="본인 환급 계좌"></div></div>
+    <div class="form-row"><label>증빙 (Dropbox 링크)<span class="hint">선택 · 주유 영수증 등</span></label><input class="input" id="x_ev" placeholder="https://www.dropbox.com/..."></div>
+  `,`<button class="btn btn-secondary" onclick="closeModal()">취소</button><button class="btn btn-primary" onclick="submitFuel()">신청</button>`);
+}
+function submitFuel(){
+  const from=val('x_from'),to=val('x_to'),visit=val('x_visit'),amount=numVal('x_amount'),acc=val('x_acc');
+  if(!from||!to||!visit||!amount||!acc){toast('출발지·도착지·목적·금액·계좌는 필수예요.','err');return;}
+  const r={id:uid('p'),requester:ME().name,team:ME().team,payee:ME().name,bank:val('x_bank'),account:acc,amount,unit:'원',category:'유류비',purpose:visit+' ('+from+'→'+to+')',evidence:val('x_ev'),hasTax:false,status:'requested',applied:val('x_date')||today(),paidAt:'',fuel:{from,to,visit,km:val('x_km'),carNo:val('x_car'),roundTrip:document.getElementById('x_round').checked}};
+  r.approver=approverFor(r.requester,amount);
+  sv('fin_submit_payout',{p:payoutPayload(r,0)},()=>{DB.payout.unshift(r);}).then(()=>{closeModal();current='payout';render();toast('유류비 신청을 등록했어요.','ok');});
+}
+function clonePayout(id){const r=DB.payout.find(x=>x.id===id);if(!r)return;openPayoutForm({payee:r.payee,bank:r.bank,account:r.account,amount:r.amount,unit:r.unit,category:r.category,purpose:r.purpose});toast('과거 요청을 복제했어요.','ok');}
+function cancelPayout(id){confirmModal('이체 요청 철회','이 요청을 철회할까요?',()=>{sv('fin_cancel_payout',{p_id:id},()=>{const r=DB.payout.find(x=>x.id===id);if(r)r.status='canceled';}).then(()=>{render();toast('철회했어요.');});});}
+function viewPayout(id){
+  const r=DB.payout.find(x=>x.id===id);if(!r)return;const st=PSTATUS[r.status];const flags=r.status==='requested'?scanPayout(r):[];
+  let foot='<button class="btn btn-secondary" onclick="closeModal()">닫기</button>';
+  if(canApprove()&&r.status==='requested')foot=`<button class="btn btn-danger" onclick="decidePayout('${id}','rejected')">반려</button><button class="btn btn-primary" onclick="decidePayout('${id}','paid')">지급완료</button>`;
+  const fuel=r.fuel?`<div class="hr"></div><div style="font-weight:700;font-size:13px;margin-bottom:8px">🚗 유류비/출장 정보</div><div class="dl"><dt>경로</dt><dd>${escH(r.fuel.from)} → ${escH(r.fuel.to)} ${r.fuel.roundTrip?'(왕복)':''}</dd><dt>목적</dt><dd>${escH(r.fuel.visit||'')}</dd><dt>거리</dt><dd>${escH(r.fuel.km||'-')} km</dd><dt>차량</dt><dd>${escH(r.fuel.carNo||'-')}</dd></div>`:'';
+  const wh=r.wh?`<div class="hr"></div><div style="font-weight:700;font-size:13px;margin-bottom:8px">🧾 원천징수</div><div class="dl"><dt>지급총액</dt><dd>${won(r.wh.gross)}원</dd><dt>원천징수</dt><dd>${won(r.wh.tax)}원 (${escH(r.wh.type)})</dd><dt>실지급액</dt><dd><b>${won(r.wh.net)}원</b></dd></div>`:'';
+  const ev=r.evidence?`<div class="hr"></div><div class="dl"><dt>증빙</dt><dd><a href="${escH(r.evidence)}" target="_blank" rel="noopener" style="color:var(--billy-blue);text-decoration:underline">Dropbox 링크 ↗</a></dd></div>`:'';
+  modal('이체 요청 상세','',(flags.length?'<div style="margin-bottom:12px">'+flags.map(flagHtml).join('')+'</div>':'')+`<div class="dl">
+    <dt>상태</dt><dd><span class="badge ${st[1]}">${st[0]}</span></dd>
+    <dt>거래처/예금주</dt><dd>${escH(r.payee)} ${r.category==='유류비'?'<span class="tag tag-fuel">유류비</span>':''}</dd>
+    <dt>은행·계좌</dt><dd>${escH(r.bank)} ${escH(r.account)}</dd>
+    <dt>금액</dt><dd><b>${won(r.amount)} ${escH(r.unit)}</b></dd>
+    <dt>분류</dt><dd>${escH(r.category||'-')}</dd>
+    <dt>적요</dt><dd>${escH(r.purpose||'-')}</dd>
+    <dt>세금계산서</dt><dd>${r.hasTax?'발행 대상':'해당 없음'}</dd>
+    <dt>요청자/팀</dt><dd>${escH(r.requester)} · ${escH(r.team||'')}</dd>
+    <dt>대표 통지</dt><dd>${isBig(r)?'🔺 1천만+ — 데모 대표 메일 통지':'해당 없음'}</dd>
+    ${r.paidAt?`<dt>지급완료</dt><dd>${escH(r.paidAt)}</dd>`:''}
+  </div>${fuel}${wh}${ev}`,foot);
+}
+function decidePayout(id,status){sv('fin_decide_payout',{p_id:id,p_status:status,p_reason:''},()=>{const r=DB.payout.find(x=>x.id===id);if(r){r.status=status;if(status==='paid')r.paidAt=today();}}).then(()=>{closeModal();render();toast(status==='paid'?'지급완료로 표시했어요.':'반려했어요.',status==='rejected'?'err':'ok');});}
+function batchPayout(status){const ss=DB.payout.filter(r=>_sel.has(r.id)&&r.status==='requested');if(IS_SUPA){Promise.all(ss.map(r=>sb.rpc('fin_decide_payout',{p_id:r.id,p_status:status,p_reason:''}))).then(()=>loadData()).then(()=>{_sel=new Set();render();toast(ss.length+'건 처리.','ok');}).catch(()=>toast('일부 처리 실패','err'));}else{ss.forEach(r=>{r.status='paid';r.paidAt=today();});_sel=new Set();render();toast(ss.length+'건 지급완료 표시.','ok');}}
+function exportPayout(){const ss=DB.payout.filter(r=>_sel.has(r.id));if(!ss.length){toast('항목을 선택하세요.','err');return;}loadXLSX().then(function(){const head=['입금은행','입금계좌번호','예금주','이체금액','통화','적요(통장표시)','분류'];const data=ss.map(r=>[r.bank,r.account,r.payee,r.amount,r.unit,(r.purpose||'').slice(0,7),r.category]);const ws=XLSX.utils.aoa_to_sheet([head].concat(data));ws['!cols']=[{wch:10},{wch:20},{wch:18},{wch:13},{wch:7},{wch:14},{wch:12}];const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'이체요청');XLSX.writeFile(wb,'이체요청_'+today()+'.xlsx');toast(ss.length+'건 엑셀 다운로드.','ok');}).catch(()=>toast('엑셀 로드 실패','err'));}
+/* ===================== 3.3% 원천징수 지급 ===================== */
+function openWHForm(){
+  const rates=Object.keys(WH_RATES).map(k=>`<option>${k}</option>`).join('');
+  modal('원천징수 지급 신청','wide',`<div class="policy" style="background:var(--billy-blue-50);border-color:var(--billy-blue-100)"><b style="color:var(--billy-blue)">🧾 사업소득·프리랜서 지급</b> — 세금 원천징수 후 <b>실지급액이 자동 계산</b>돼요. (실제 이체액 = 실지급액)</div>
+    <div class="f2"><div class="form-row"><label>받는 분 <span class="req">*</span></label><input class="input" id="w_name" placeholder="프리랜서/강사 등"></div><div class="form-row"><label>소득구분</label><select class="input" id="w_type" onchange="whCalc()">${rates}</select></div></div>
+    <div class="f2"><div class="form-row"><label>입금 은행 <span class="req">*</span></label><select class="input" id="w_bank">${BANKS.map(b=>`<option>${b}</option>`).join('')}</select></div><div class="form-row"><label>계좌번호 <span class="req">*</span></label><input class="input num" id="w_acc" placeholder="- 없이 숫자"></div></div>
+    <div class="form-row"><label>지급 총액(세전, 원) <span class="req">*</span></label><input class="input num" id="w_gross" placeholder="0" oninput="this.value=comma(this.value);whCalc()"></div>
+    <div class="preview-box" id="w_pv"><span>원천징수 <b id="w_tax">0</b></span><span>실지급액 <b id="w_net">0</b></span></div>
+    <div class="form-row" style="margin-top:14px"><label>사유/메모</label><input class="input" id="w_memo" placeholder="예: 6월 외부 강의료"></div>
+    <div class="form-row"><label>증빙 (Dropbox 링크)<span class="hint">선택</span></label><input class="input" id="w_ev" placeholder="https://www.dropbox.com/..."></div>
+  `,`<button class="btn btn-secondary" onclick="closeModal()">취소</button><button class="btn btn-primary" onclick="submitWH()">신청</button>`);
+  whCalc();
+}
+function whCalc(){const g=numVal('w_gross');const rate=WH_RATES[val('w_type')]||0.033;const tax=Math.round(g*rate);const e=document.getElementById('w_tax');if(!e)return;e.textContent=won(tax);document.getElementById('w_net').textContent=won(g-tax);}
+function submitWH(){
+  const g=numVal('w_gross');const rate=WH_RATES[val('w_type')]||0.033;const tax=Math.round(g*rate);const net=g-tax;const name=val('w_name'),acc=val('w_acc');
+  if(!name||!acc||!g){toast('받는분·계좌·총액은 필수예요.','err');return;}
+  if(isLockedMonth(today())){toast(today().slice(0,7)+'은 마감되어 신청할 수 없어요.','err');return;}
+  const r={id:uid('p'),requester:ME().name,team:ME().team,payee:name,bank:val('w_bank'),account:acc,amount:net,unit:'원',category:'인건비(3.3%)',purpose:(val('w_memo')||'원천징수 지급'),evidence:val('w_ev'),hasTax:false,status:'requested',applied:today(),paidAt:'',wh:{gross:g,rate,tax,net,type:val('w_type')}};
+  r.approver=approverFor(r.requester,net);
+  sv('fin_submit_payout',{p:payoutPayload(r,0)},()=>{DB.payout.unshift(r);}).then(()=>{closeModal();current='payout';render();toast('원천징수 지급 신청 등록 (실지급 '+won(net)+'원).','ok');});
+}
+/* ===================== 정기/반복 이체 ===================== */
+function openTemplates(){
+  const list=DB.templates;
+  const body=list.length?list.map(t=>`<div class="acct-row"><div class="ab"><div class="abk">${escH(t.payee)} · ${won(t.amount)}원</div><div class="anum">매월 · ${t.done}/${t.total}회 생성 · 다음 ${escH(t.nextDate)}</div></div>${t.done<t.total?`<button class="btn btn-sm btn-line" onclick="recurOnce('${t.id}')">다음 회차 생성</button>`:'<span class="tag tag-gray">완료</span>'}</div>`).join(''):'<div class="t-sub">등록된 정기 이체가 없어요.<br>"새 이체 요청"에서 <b>🔁 매월 정기</b>를 체크해 등록하세요.</div>';
+  modal('🔁 정기 이체 관리','',body,'<button class="btn btn-secondary" onclick="closeModal()">닫기</button>');
+}
+function recurOnce(tid){const t=DB.templates.find(x=>x.id===tid);if(!t||t.done>=t.total)return;sv('fin_recur_once',{p_id:tid},()=>{const r={id:uid('p'),requester:t.requester,team:t.team,payee:t.payee,bank:t.bank,account:t.account,amount:t.amount,unit:'원',category:t.category,purpose:t.purpose+' (정기 '+(t.done+1)+'/'+t.total+')',hasTax:t.hasTax,status:'requested',applied:t.nextDate,paidAt:''};DB.payout.unshift(r);t.done++;t.nextDate=addMonth(t.nextDate,1);}).then(()=>{closeModal();render();toast('정기 이체 회차를 생성했어요.','ok');});}
+/* ===================== 세금계산서 ===================== */
+function invoiceDeadline(w){if(!w)return null;const d=new Date(w);return new Date(d.getFullYear(),d.getMonth()+1,10);}
+function deadlineBadge(w){const dl=invoiceDeadline(w);if(!dl)return '';const left=Math.round((dl-new Date(today()))/86400000);if(left<0)return `<span class="flag warn" title="익월 10일 초과 — 가산세">⛔ 발행기한 초과</span>`;if(left<=3)return `<span class="flag caution" title="익월 10일까지">⏰ 발행기한 D-${left}</span>`;return '';}
+function renderInvoice(){
+  const c=document.getElementById('content');
+  let list=applySort(visible(DB.invoice,'invoice'),'invoice','total','company');
+  const mineApprove=canApprove();const pend=list.filter(r=>r.status==='requested');
+  let h=`<div class="kpis" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+    <div class="kpi orange"><div class="lbl">발행 대기</div><div class="val">${pend.length}건</div></div>
+    <div class="kpi blue"><div class="lbl">표시 건수</div><div class="val">${list.length}건</div></div>
+    <div class="kpi"><div class="lbl">공급가액 합계</div><div class="val">${won(list.reduce((s,r)=>s+r.supply,0))}<span style="font-size:12px">원</span></div></div>
+  </div>`;
+  h+=filterBar('invoice');
+  if(mineApprove&&_sel.size)h+=`<div class="batchbar"><span class="sel">${_sel.size}건 선택</span><button class="btn btn-sm btn-line" onclick="batchInvoice('issued')">${I.check}<span>발행완료 표시</span></button><button class="btn btn-sm btn-primary" onclick="exportInvoice()">${I.download}<span>홈택스 발행 엑셀</span></button><button class="btn btn-sm btn-secondary" onclick="_sel=new Set();render()">해제</button></div>`;
+  if(!list.length){h+=`<div class="card"><div class="empty">${I.empty}<div>표시할 발행 요청이 없습니다.</div></div></div>`;c.innerHTML=h;return;}
+  h+='<div class="card"><div class="table-wrap"><table><thead><tr>';
+  if(mineApprove)h+=`<th style="width:36px"><input type="checkbox" class="cbx" ${list.every(r=>_sel.has(r.id))?'checked':''} onclick="toggleAll('invoice')"></th>`;
+  h+=`<th class="sortable" onclick="setSort('invoice','name')">공급받는자${sortIcon('invoice','name')}</th><th>구분</th><th>품목/작성일</th><th class="sortable" style="text-align:right" onclick="setSort('invoice','amount')">합계${sortIcon('invoice','amount')}</th><th>기한</th><th>상태</th><th></th></tr></thead><tbody>`;
+  list.forEach(r=>{const st=ISTATUS[r.status];
+    h+='<tr>';
+    if(mineApprove)h+=`<td><input type="checkbox" class="cbx" ${_sel.has(r.id)?'checked':''} onclick="toggleSel('${r.id}')"></td>`;
+    h+=`<td><div class="t-name">${escH(r.company)}</div><div class="t-sub num">${escH(r.bizNo)}</div></td>`;
+    h+=`<td><span class="tag tag-gray">${escH(r.saleType||'매출')}</span></td>`;
+    h+=`<td><div class="ellip">${escH(r.itemName)}</div><div class="t-sub num">${escH(r.writeDate)}</div></td>`;
+    h+=`<td style="text-align:right"><span class="amt">${won(r.total)}</span><div class="t-sub num">VAT ${won(r.tax)}</div></td>`;
+    h+=`<td>${deadlineBadge(r.writeDate)||'<span class="t-sub">–</span>'}</td>`;
+    h+=`<td><span class="badge ${st[1]}">${st[0]}</span></td>`;
+    h+=`<td><div class="rowact"><button class="iconbtn" title="상세" onclick="viewInvoice('${r.id}')">${I.eye}</button><button class="iconbtn" title="복제" onclick="cloneInvoice('${r.id}')">${I.copy}</button></div></td></tr>`;
+  });
+  h+='</tbody></table></div></div>';
+  c.innerHTML=h;
+}
+function openInvoiceForm(seed){
+  seed=seed||{};const types=['매출','매입','영세','비과세'].map(x=>`<option ${seed.saleType===x?'selected':''}>${x}</option>`).join('');
+  modal('새 세금계산서 발행 요청','wide',POLICY_HTML+`
+    <div class="f2"><div class="form-row"><label>상호 <span class="req">*</span></label><input class="input" id="i_company" value="${escH(seed.company||'')}" placeholder="(주)베스트마트" list="vlist2" oninput="onInvPick()"><datalist id="vlist2">${VENDORS.filter(v=>v.bizNo).map(v=>`<option value="${escH(v.name)}">`).join('')}</datalist></div><div class="form-row"><label>사업자등록번호 <span class="req">*</span></label><input class="input num" id="i_bizno" value="${escH(seed.bizNo||'')}" placeholder="10자리"></div></div>
+    <div class="f2"><div class="form-row"><label>대표자 <span class="req">*</span></label><input class="input" id="i_ceo" value="${escH(seed.ceo||'')}"></div><div class="form-row"><label>이메일 <span class="req">*</span></label><input class="input" id="i_email" value="${escH(seed.email||'')}" placeholder="tax@company.kr"></div></div>
+    <div class="f2"><div class="form-row"><label>구분</label><select class="input" id="i_type">${types}</select></div><div class="form-row"><label>작성일자 <span class="req">*</span><span class="hint">매입=이체당일</span></label><input class="input" type="date" id="i_date" value="${seed.writeDate||today()}" onchange="invDeadlineHint()"></div></div>
+    <div class="form-row"><label>품목명 <span class="req">*</span></label><input class="input" id="i_item" value="${escH(seed.itemName||'')}"></div>
+    <div class="form-row"><label>공급가액 <span class="req">*</span><span class="hint">세액·합계 자동</span></label><input class="input num" id="i_supply" value="${seed.supply?won(seed.supply):''}" placeholder="0" oninput="this.value=comma(this.value);invVat()"></div>
+    <div class="preview-box" id="i_pv"><span>공급가액 <b id="pv_s">0</b></span><span>세액 <b id="pv_t">0</b></span><span>합계 <b id="pv_tot">0</b></span></div>
+    <div class="form-row" style="margin-top:14px"><label>증빙 (Dropbox 링크)<span class="hint">선택</span></label><input class="input" id="i_evidence" value="${escH(seed.evidence||'')}" placeholder="https://www.dropbox.com/..."></div>
+    <div id="i_dl"></div>
+  `,`<button class="btn btn-secondary" onclick="closeModal()">취소</button><button class="btn btn-primary" onclick="submitInvoice()">요청 등록</button>`);
+  invVat();invDeadlineHint();
+}
+function onInvPick(){const v=VENDORS.find(x=>x.name===val('i_company'));if(v){document.getElementById('i_bizno').value=v.bizNo||'';document.getElementById('i_email').value=v.email||'';}}
+function invVat(){const s=numVal('i_supply');const t=Math.round(s*0.1);const e=document.getElementById('pv_s');if(!e)return;e.textContent=won(s);document.getElementById('pv_t').textContent=won(t);document.getElementById('pv_tot').textContent=won(s+t);}
+function invDeadlineHint(){const el=document.getElementById('i_dl');if(!el)return;const b=deadlineBadge(val('i_date'));el.innerHTML=b?'<div>'+b+' <span class="t-sub">— 작성일 기준 익월 10일까지 발행</span></div>':'';}
+function submitInvoice(){const supply=numVal('i_supply');const r={id:uid('v'),requester:ME().name,team:ME().team,saleType:val('i_type'),company:val('i_company'),bizNo:digits(val('i_bizno')),ceo:val('i_ceo'),email:val('i_email'),writeDate:val('i_date'),itemName:val('i_item'),supply,tax:Math.round(supply*0.1),total:supply+Math.round(supply*0.1),evidence:val('i_evidence'),status:'requested',applied:today()};
+  if(!r.company||!r.bizNo||!r.ceo||!r.email||!r.itemName||!r.supply){toast('필수 항목을 채워주세요.','err');return;}
+  if(r.bizNo.length!==10){toast('사업자등록번호는 10자리예요.','err');return;}
+  if(isLockedMonth(r.writeDate)){toast(r.writeDate.slice(0,7)+'은 마감되어 발행할 수 없어요.','err');return;}
+  const dl=invoiceDeadline(r.writeDate);
+  if(dl&&new Date(today())>dl){toast('⛔ 작성일('+r.writeDate+') 기준 익월 10일이 지나 발행 불가예요 (가산세 대상).','err');return;}
+  r.approver=approverFor(r.requester,r.total);
+  sv('fin_submit_invoice',{p:invoicePayload(r)},()=>{DB.invoice.unshift(r);}).then(()=>{closeModal();render();toast('발행 요청을 등록했어요.','ok');});
+}
+function cloneInvoice(id){const r=DB.invoice.find(x=>x.id===id);if(!r)return;openInvoiceForm({company:r.company,bizNo:r.bizNo,ceo:r.ceo,email:r.email,saleType:r.saleType,writeDate:today(),itemName:r.itemName,supply:r.supply});toast('복제했어요. 작성일 확인하세요.','ok');}
+function viewInvoice(id){const r=DB.invoice.find(x=>x.id===id);if(!r)return;const st=ISTATUS[r.status];
+  let foot='<button class="btn btn-secondary" onclick="closeModal()">닫기</button>';
+  if(canApprove()&&r.status==='requested')foot=`<button class="btn btn-danger" onclick="decideInvoice('${id}','rejected')">반려</button><button class="btn btn-primary" onclick="decideInvoice('${id}','issued')">발행완료</button>`;
+  modal('세금계산서 발행 요청 상세','',`<div style="margin-bottom:10px">${deadlineBadge(r.writeDate)}</div><div class="dl"><dt>상태</dt><dd><span class="badge ${st[1]}">${st[0]}</span></dd><dt>구분</dt><dd>${escH(r.saleType||'매출')}</dd><dt>상호</dt><dd>${escH(r.company)} (${escH(r.ceo)})</dd><dt>사업자번호</dt><dd class="num">${escH(r.bizNo)}</dd><dt>이메일</dt><dd>${escH(r.email)}</dd><dt>품목</dt><dd>${escH(r.itemName)}</dd><dt>작성일자</dt><dd>${escH(r.writeDate)}</dd><dt>공급가액</dt><dd>${won(r.supply)}원</dd><dt>세액</dt><dd>${won(r.tax)}원</dd><dt>합계</dt><dd><b>${won(r.total)}원</b></dd><dt>요청자/팀</dt><dd>${escH(r.requester)} · ${escH(r.team||'')}</dd>${r.evidence?`<dt>증빙</dt><dd><a href="${escH(r.evidence)}" target="_blank" rel="noopener" style="color:var(--billy-blue);text-decoration:underline">Dropbox 링크 ↗</a></dd>`:''}</div>`,foot);
+}
+function decideInvoice(id,status){sv('fin_decide_invoice',{p_id:id,p_status:status,p_reason:''},()=>{const r=DB.invoice.find(x=>x.id===id);if(r){r.status=status;if(status==='issued')r.issuedAt=today();}}).then(()=>{closeModal();render();toast(status==='issued'?'발행완료로 표시했어요.':'반려했어요.',status==='rejected'?'err':'ok');});}
+function batchInvoice(status){const ss=DB.invoice.filter(r=>_sel.has(r.id)&&r.status==='requested');if(IS_SUPA){Promise.all(ss.map(r=>sb.rpc('fin_decide_invoice',{p_id:r.id,p_status:status,p_reason:''}))).then(()=>loadData()).then(()=>{_sel=new Set();render();toast(ss.length+'건 처리.','ok');}).catch(()=>toast('일부 처리 실패','err'));}else{ss.forEach(r=>{r.status='issued';});_sel=new Set();render();toast(ss.length+'건 처리.','ok');}}
+function exportInvoice(){const ss=DB.invoice.filter(r=>_sel.has(r.id));if(!ss.length){toast('항목을 선택하세요.','err');return;}loadXLSX().then(function(){const head=['작성일자','공급받는자 사업자등록번호','상호','대표자','이메일','품목명','공급가액','세액','합계금액','구분'];const data=ss.map(r=>[r.writeDate,r.bizNo,r.company,r.ceo,r.email,r.itemName,r.supply,r.tax,r.total,r.saleType]);const ws=XLSX.utils.aoa_to_sheet([head].concat(data));ws['!cols']=[{wch:11},{wch:16},{wch:18},{wch:9},{wch:22},{wch:22},{wch:12},{wch:11},{wch:12},{wch:7}];const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'세금계산서');XLSX.writeFile(wb,'세금계산서발행_'+today()+'.xlsx');toast(ss.length+'건 엑셀 다운로드.','ok');}).catch(()=>toast('엑셀 로드 실패','err'));}
+/* ===================== 거래처 관리 ===================== */
+function renderVendors(){
+  const c=document.getElementById('content');let list=VENDORS.slice();
+  if(_q){const q=_q.toLowerCase();list=list.filter(v=>(v.name+v.bizNo+v.team).toLowerCase().includes(q));}
+  const s=_sort.vendors;list.sort((a,b)=>{let r=0;if(s.k==='name')r=a.name.localeCompare(b.name,'ko');else if(s.k==='amount')r=(a.avg||0)-(b.avg||0);else r=(a.cnt||0)-(b.cnt||0);return r*s.dir;});
+  let h=`<div class="kpis" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))"><div class="kpi blue"><div class="lbl">거래처</div><div class="val">${VENDORS.length}곳</div></div><div class="kpi"><div class="lbl">사업자번호 보유</div><div class="val">${VENDORS.filter(v=>v.bizNo).length}곳</div></div><div class="kpi orange"><div class="lbl">다계좌 거래처</div><div class="val">${VENDORS.filter(v=>v.accounts.length>1).length}곳</div></div></div>`;
+  h+=`<div class="filters"><div class="search">${I.search}<input placeholder="거래처·사업자번호 검색" value="${escH(_q)}" oninput="onSearch(this.value)"></div></div>`;
+  h+='<div class="card"><div class="table-wrap"><table><thead><tr>';
+  h+=`<th class="sortable" onclick="setSort('vendors','name')">거래처${sortIcon('vendors','name')}</th><th>사업자번호</th><th>팀</th><th>대표계좌</th><th>계좌</th><th class="sortable" style="text-align:right" onclick="setSort('vendors','cnt')">거래수${sortIcon('vendors','cnt')}</th><th class="sortable" style="text-align:right" onclick="setSort('vendors','amount')">평균금액${sortIcon('vendors','amount')}</th><th></th></tr></thead><tbody>`;
+  list.forEach(v=>{const pa=v.accounts.find(a=>a.primary)||v.accounts[0];
+    h+=`<tr><td><div class="t-name">${escH(v.name)}</div><div class="t-sub">${v.email?escH(v.email):'이메일 없음'}</div></td><td class="num">${v.bizNo?escH(v.bizNo):'<span class="t-sub">없음</span>'}</td><td><span class="tag tag-gray">${escH(v.team||'-')}</span></td><td>${pa?escH(pa.bank)+' <span class="num">'+escH(pa.account)+'</span>':'-'}</td><td>${v.accounts.length>1?`<span class="tag tag-blue">${v.accounts.length}개</span>`:'1개'}</td><td style="text-align:right" class="num">${v.cnt}회</td><td style="text-align:right" class="amt">${won(v.avg)}${v.unit!=='원'?' '+v.unit:''}</td><td><div class="rowact"><button class="iconbtn" title="상세·계좌" onclick="viewVendor('${v.id}')">${I.eye}</button></div></td></tr>`;
+  });
+  h+='</tbody></table></div></div>';c.innerHTML=h;
+}
+function viewVendor(id){const v=VENDORS.find(x=>x.id===id);if(!v)return;
+  const accts=v.accounts.map((a,i)=>`<div class="acct-row ${a.primary?'primary':''}"><div class="ab"><div class="abk">${escH(a.bank)} ${a.primary?'<span class="tag tag-blue" style="margin-left:4px">대표</span>':''}</div><div class="anum num">${escH(a.account)} · ${escH(a.holder)}</div></div>${a.primary?'':`<button class="btn btn-sm btn-line" onclick="setPrimary('${v.id}',${i})">대표 지정</button>`}</div>`).join('');
+  modal('거래처 — '+v.name,'',`<div class="dl"><dt>사업자번호</dt><dd class="num">${v.bizNo?escH(v.bizNo):'없음'}</dd><dt>팀</dt><dd>${escH(v.team||'-')}</dd><dt>이메일</dt><dd>${escH(v.email||'-')}</dd><dt>거래</dt><dd>${v.cnt}회 · 평균 ${won(v.avg)}${v.unit!=='원'?' '+v.unit:'원'} · 최대 ${won(v.max)}</dd><dt>최근거래</dt><dd>${escH(v.lastDate||'-')}</dd></div><div class="hr"></div><div style="font-weight:700;font-size:13px;margin-bottom:9px">등록 계좌 ${v.accounts.length}개</div>${accts}<div class="t-sub" style="margin-top:6px">※ 신규 이체 요청 시 대표계좌와 다른 계좌면 ⚠️ 계좌변경으로 표시됩니다.</div>`,`<button class="btn btn-secondary" onclick="closeModal()">닫기</button><button class="btn btn-primary" onclick="newFromVendor('${v.id}')">이 거래처로 이체 요청</button>`);
+}
+function setPrimary(id,idx){const v=VENDORS.find(x=>x.id===id);if(!v)return;const acc=v.accounts[idx];sv('fin_set_primary',{p_account_id:acc&&acc.id},()=>{v.accounts.forEach((a,i)=>a.primary=(i===idx));}).then(()=>{viewVendor(id);toast('대표계좌를 변경했어요.','ok');});}
+function newFromVendor(id){const v=VENDORS.find(x=>x.id===id);if(!v)return;closeModal();const pa=v.accounts.find(a=>a.primary)||v.accounts[0];current='payout';render();openPayoutForm({payee:v.name,bank:pa?pa.bank:'',account:pa?pa.account:'',unit:v.unit});}
+function exportVendors(){loadXLSX().then(function(){const head=['거래처','사업자번호','팀','대표은행','대표계좌','계좌수','거래수','평균금액','통화','최근거래'];const data=VENDORS.map(v=>{const pa=v.accounts.find(a=>a.primary)||v.accounts[0];return [v.name,v.bizNo,v.team,pa?pa.bank:'',pa?pa.account:'',v.accounts.length,v.cnt,v.avg,v.unit,v.lastDate];});const ws=XLSX.utils.aoa_to_sheet([head].concat(data));ws['!cols']=[{wch:22},{wch:14},{wch:9},{wch:9},{wch:20},{wch:7},{wch:7},{wch:13},{wch:6},{wch:12}];const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'거래처');XLSX.writeFile(wb,'거래처목록_'+today()+'.xlsx');toast('거래처 목록 엑셀 다운로드.','ok');}).catch(()=>toast('엑셀 로드 실패','err'));}
+/* ===================== 모달/토스트 ===================== */
+function modal(title,cls,body,foot){closeModal();const ov=document.createElement('div');ov.className='overlay';ov.id='ov';ov.innerHTML=`<div class="modal ${cls||''}"><div class="modal-head"><h3>${escH(title)}</h3><button class="x" onclick="closeModal()">${I.x}</button></div><div class="modal-body">${body}</div>${foot?`<div class="modal-foot">${foot}</div>`:''}</div>`;ov.addEventListener('click',e=>{if(e.target===ov)closeModal();});document.body.appendChild(ov);}
+function closeModal(){const o=document.getElementById('ov');if(o)o.remove();}
+function confirmModal(title,msg,onYes){closeModal();const ov=document.createElement('div');ov.className='overlay';ov.id='ov';ov.innerHTML=`<div class="modal" style="width:430px"><div class="modal-head"><h3>${escH(title)}</h3><button class="x" onclick="closeModal()">${I.x}</button></div><div class="modal-body"><div style="font-size:14px;line-height:1.65;color:var(--gray-800)">${msg}</div></div><div class="modal-foot"><button class="btn btn-secondary" onclick="closeModal()">취소</button><button class="btn btn-primary" id="cfy">확인</button></div></div>`;ov.addEventListener('click',e=>{if(e.target===ov)closeModal();});document.body.appendChild(ov);document.getElementById('cfy').onclick=()=>{closeModal();onYes&&onYes();};}
+function toast(msg,type){const t=document.createElement('div');t.className='toast'+(type?' '+type:'');t.innerHTML=(type==='ok'?I.check:'')+'<span>'+escH(msg)+'</span>';document.body.appendChild(t);setTimeout(()=>{t.style.transition='.3s';t.style.opacity='0';setTimeout(()=>t.remove(),300);},2400);}
+/* ===================== Supabase: 인증 · 데이터 · 저장 ===================== */
+function roleLabel(r){return {finance:'재무 승인',exec:'대표',viewer:'조회',lead:'팀장',member:'직원'}[r]||'직원';}
+function normalizeTeam(t){t=String(t||'');if(/brand|브랜드/i.test(t))return 'BRAND';if(/product/i.test(t))return 'Product';if(/commerce|커머스/i.test(t))return '커머스';if(/m&e|marketer|마케/i.test(t))return 'M&E';if(/biz|ga/i.test(t))return 'Biz/GA';return t;}
+async function loadMe(){
+  let role='member',name='',team='',email='';
+  try{const{data}=await sb.rpc('fin_me');if(data){role=data.role||'member';name=data.name||'';team=data.team||'';email=data.email||'';}}catch(e){}
+  if(!name||!team){try{const{data:hr}=await sb.rpc('get_me');if(hr){name=name||hr.name||'';team=team||normalizeTeam(hr.dept||hr.team||'');}}catch(e){}}
+  if(!email){try{const{data:u}=await sb.auth.getUser();email=(u&&u.user&&u.user.email)||'';}catch(e){}}
+  if(!name)name=(email.split('@')[0]||'사용자');
+  SUPA_USER={email,role,name,team,av:(name||'·').slice(0,1),rl:roleLabel(role)};ROLE=role;
+}
+function _mapPayout(r){return {id:r.id,requester:r.requester_name,team:r.team,payee:r.payee,bank:r.bank,account:r.account,amount:Number(r.amount)||0,unit:r.currency||'원',category:r.category,purpose:r.purpose,evidence:r.evidence_url,hasTax:r.has_tax,status:r.status,paidAt:r.paid_date||'',applied:(r.created_at||'').slice(0,10),wh:r.wh,fuel:r.fuel};}
+function _mapInvoice(r){return {id:r.id,requester:r.requester_name,team:r.team,saleType:r.sale_type,bizNo:r.biz_no,company:r.company,ceo:r.ceo,email:r.email,writeDate:r.write_date,itemName:r.item_name,supply:Number(r.supply)||0,tax:Number(r.vat)||0,total:Number(r.total)||0,evidence:r.evidence_url,status:r.status,applied:(r.created_at||'').slice(0,10),issuedAt:r.issued_date||''};}
+async function loadData(){
+  if(!IS_SUPA)return;
+  const[po,iv,ve,rc,lo]=await Promise.all([
+    sb.from('fin_payouts').select('*').order('created_at',{ascending:false}),
+    sb.from('fin_invoices').select('*').order('created_at',{ascending:false}),
+    sb.from('fin_vendors').select('*, accounts:fin_vendor_accounts(*)'),
+    sb.from('fin_recurring').select('*'),
+    sb.from('fin_locks').select('ym')]);
+  DB.payout=(po.data||[]).map(_mapPayout);
+  DB.invoice=(iv.data||[]).map(_mapInvoice);
+  VENDORS.length=0;(ve.data||[]).forEach(v=>VENDORS.push({id:v.id,name:v.name,bizNo:v.biz_no,email:v.email,team:v.team,unit:v.unit||'원',cnt:v.tx_count||0,avg:Number(v.avg_amount)||0,max:Number(v.max_amount)||0,lastDate:v.last_date||'',accounts:(v.accounts||[]).map(a=>({id:a.id,bank:a.bank,account:a.account,holder:a.holder,primary:a.is_primary})).sort((a,b)=>(b.primary?1:0)-(a.primary?1:0))}));
+  DB.templates=(rc.data||[]).map(t=>({id:t.id,payee:t.payee,bank:t.bank,account:t.account,amount:Number(t.amount)||0,category:t.category,total:t.total,done:t.done,nextDate:t.next_date,requester:t.requester_name,team:t.team}));
+  LOCKED=new Set((lo.data||[]).map(x=>x.ym));
+}
+/* 저장: 실모드=RPC→새로고침 / 데모=mockFn */
+function sv(rpc,args,mockFn){if(!IS_SUPA){if(mockFn)mockFn();return Promise.resolve(true);}return sb.rpc(rpc,args).then(({data,error})=>{if(error){toast(error.message||'오류가 났어요','err');throw error;}return loadData();});}
+function payoutPayload(r,recurTotal){return {payee:r.payee,bank:r.bank,account:r.account,amount:r.amount,unit:r.unit,category:r.category,purpose:r.purpose,evidence:r.evidence||'',hasTax:!!r.hasTax,wh:r.wh||null,fuel:r.fuel||null,requester_name:ME().name,team:ME().team,recurTotal:recurTotal||0};}
+function invoicePayload(r){return {company:r.company,bizNo:r.bizNo,ceo:r.ceo,email:r.email,saleType:r.saleType,writeDate:r.writeDate,itemName:r.itemName,supply:r.supply,vat:r.tax,total:r.total,evidence:r.evidence||'',requester_name:ME().name,team:ME().team};}
+/* ── 로그인 (이메일 OTP) ── */
+let _loginEmail='';
+function renderLogin(){
+  document.querySelector('.layout').style.display='none';
+  let el=document.getElementById('loginScreen');if(!el){el=document.createElement('div');el.id='loginScreen';document.body.appendChild(el);}
+  el.innerHTML=`<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(155deg,var(--billy-blue-50),var(--billy-pink-soft));padding:24px"><div class="card" style="width:400px;max-width:100%;padding:34px 32px"><div style="display:flex;align-items:center;gap:11px;margin-bottom:22px"><div style="width:44px;height:44px;border-radius:50%;background:var(--billy-blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;box-shadow:var(--sh-blue)">₩</div><div><div style="font-weight:700;font-size:17px">빌리지베이비 재무</div><div style="font-size:12px;color:var(--gray)">finance.villagebaby.kr</div></div></div><h2 style="font-size:20px;font-weight:700;margin-bottom:6px">로그인</h2><p style="color:var(--gray);font-size:13px;margin-bottom:20px">회사 이메일로 인증코드를 받아 로그인하세요.</p><div id="loginStep1"><input class="input" id="loginEmail" type="email" placeholder="name@villagebaby.kr" value="${escH(_loginEmail)}" style="margin-bottom:12px"><button class="btn btn-primary btn-block" onclick="finSendCode()">인증코드 받기</button></div><div id="loginStep2" style="display:none"><input class="input" id="loginCode" inputmode="numeric" placeholder="이메일로 받은 코드" style="margin-bottom:12px"><button class="btn btn-primary btn-block" onclick="finVerify()">로그인</button><button class="btn btn-secondary btn-block" style="margin-top:8px" onclick="document.getElementById('loginStep2').style.display='none';document.getElementById('loginStep1').style.display='block'">이메일 다시 입력</button></div><div id="loginMsg" style="margin-top:14px;font-size:13px;text-align:center;min-height:18px"></div></div></div>`;
+}
+function _lmsg(m,err){const el=document.getElementById('loginMsg');if(el){el.textContent=m;el.style.color=err?'var(--sys-red)':'var(--billy-blue)';}}
+function finSendCode(){const email=(document.getElementById('loginEmail').value||'').trim().toLowerCase();if(!/.+@.+\..+/.test(email)){_lmsg('이메일을 확인해 주세요.',true);return;}_loginEmail=email;_lmsg('코드 보내는 중…');sb.auth.signInWithOtp({email,options:{shouldCreateUser:false}}).then(({error})=>{if(error){_lmsg(error.message||'발송 실패 — 등록된 직원 이메일인지 확인하세요.',true);return;}document.getElementById('loginStep1').style.display='none';document.getElementById('loginStep2').style.display='block';_lmsg('메일로 받은 코드를 입력하세요.');});}
+function finVerify(){const token=(document.getElementById('loginCode').value||'').trim();if(!token){_lmsg('코드를 입력하세요.',true);return;}_lmsg('확인 중…');sb.auth.verifyOtp({email:_loginEmail,token,type:'email'}).then(({error})=>{if(error){_lmsg(error.message||'코드가 맞지 않아요.',true);return;}startApp();});}
+function logout(){if(sb)sb.auth.signOut().then(()=>location.reload());}
+async function startApp(){const ls=document.getElementById('loginScreen');if(ls)ls.remove();document.querySelector('.layout').style.display='';await loadMe();await loadData();const rsel=document.querySelector('.rolesel');if(rsel)rsel.innerHTML='<button class="btn btn-sm btn-secondary btn-block" onclick="logout()">로그아웃</button>';const dn=document.querySelector('.demo-note');if(dn)dn.textContent=ME().name+' · '+ME().rl;render();}
+async function bootstrap(){if(!IS_SUPA){render();return;}try{const{data}=await sb.auth.getSession();if(data&&data.session){await startApp();}else{renderLogin();}}catch(e){renderLogin();}}
+bootstrap();
+</script>
+</body>
+</html>
