@@ -175,6 +175,15 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 .acct-row .abk{font-weight:700;font-size:13px}
 .acct-row .anum{font-size:12.5px;color:var(--gray-700)}
 @media(max-width:880px){.sidebar{display:none}.topbar{flex-direction:column}.search{margin-left:0;width:100%}.search input{width:100%}}
+/* 로그인(HR과 동일 — 아이디만 입력, @villagebaby.kr 고정) */
+.btn-pill{border-radius:999px}
+.email-row{display:flex;align-items:stretch;border:1.4px solid var(--gray-300);border-radius:var(--r-md);overflow:hidden;background:#fff}
+.email-row:focus-within{border-color:var(--billy-blue);box-shadow:0 0 0 3px var(--billy-blue-50)}
+.email-row .input{border:none;border-radius:0;flex:1}
+.email-row .input:focus{box-shadow:none}
+.email-suffix{display:flex;align-items:center;padding:0 13px;background:var(--gray-50);color:var(--gray-600);font-size:13px;white-space:nowrap;border-left:1px solid var(--gray-200)}
+.login-msg{margin-top:14px;font-size:13px;font-weight:500;min-height:18px;text-align:center}
+.login-msg.ok{color:var(--billy-blue)}.login-msg.err{color:var(--sys-red)}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -720,11 +729,26 @@ let _loginEmail='';
 function renderLogin(){
   document.querySelector('.layout').style.display='none';
   let el=document.getElementById('loginScreen');if(!el){el=document.createElement('div');el.id='loginScreen';document.body.appendChild(el);}
-  el.innerHTML=`<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(155deg,var(--billy-blue-50),var(--billy-pink-soft));padding:24px"><div class="card" style="width:400px;max-width:100%;padding:34px 32px"><div style="display:flex;align-items:center;gap:11px;margin-bottom:22px"><div style="width:44px;height:44px;border-radius:50%;background:var(--billy-blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;box-shadow:var(--sh-blue)">₩</div><div><div style="font-weight:700;font-size:17px">빌리지베이비 재무</div><div style="font-size:12px;color:var(--gray)">finance.villagebaby.kr</div></div></div><h2 style="font-size:20px;font-weight:700;margin-bottom:6px">로그인</h2><p style="color:var(--gray);font-size:13px;margin-bottom:20px">회사 이메일로 인증코드를 받아 로그인하세요.</p><div id="loginStep1"><input class="input" id="loginEmail" type="email" placeholder="name@villagebaby.kr" value="${escH(_loginEmail)}" style="margin-bottom:12px"><button class="btn btn-primary btn-block" onclick="finSendCode()">인증코드 받기</button></div><div id="loginStep2" style="display:none"><input class="input" id="loginCode" inputmode="numeric" placeholder="이메일로 받은 코드" style="margin-bottom:12px"><button class="btn btn-primary btn-block" onclick="finVerify()">로그인</button><button class="btn btn-secondary btn-block" style="margin-top:8px" onclick="document.getElementById('loginStep2').style.display='none';document.getElementById('loginStep1').style.display='block'">이메일 다시 입력</button></div><div id="loginMsg" style="margin-top:14px;font-size:13px;text-align:center;min-height:18px"></div></div></div>`;
+  el.innerHTML=`<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(155deg,var(--billy-blue-50),var(--billy-pink-soft));padding:24px"><div class="card" style="width:404px;max-width:100%;padding:34px 32px"><div style="display:flex;align-items:center;gap:11px;margin-bottom:22px"><div style="width:44px;height:44px;border-radius:50%;background:var(--billy-blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;box-shadow:var(--sh-blue)">₩</div><div><div style="font-weight:700;font-size:17px">빌리지베이비 재무</div><div style="font-size:12px;color:var(--gray)">finance.villagebaby.kr</div></div></div><h2 style="font-size:22px;font-weight:700;margin-bottom:7px">로그인</h2><p style="color:var(--gray);font-size:13px;margin-bottom:22px;line-height:1.55">@villagebaby.kr 이메일로 로그인 코드를 받아 입력하세요.<br>별도 가입은 필요 없습니다.</p><div id="loginStep1"><div class="form-row"><label>회사 이메일</label><div class="email-row"><input class="input" id="liEmail" autocomplete="username" placeholder="아이디 입력 (예: jy.lee)" onkeydown="if(event.key==='Enter')finSendCode()"><span class="email-suffix">@villagebaby.kr</span></div></div><button class="btn btn-primary btn-pill btn-block" onclick="finSendCode()">인증코드 받기</button></div><div id="loginStep2" style="display:none"><div class="form-row"><label>인증코드 <span class="hint" id="liSent"></span></label><input class="input" id="liCode" inputmode="numeric" placeholder="메일로 받은 코드" onkeydown="if(event.key==='Enter')finVerify()"></div><button class="btn btn-primary btn-pill btn-block" onclick="finVerify()">로그인</button><button class="btn btn-secondary btn-pill btn-block" style="margin-top:8px" onclick="document.getElementById('loginStep2').style.display='none';document.getElementById('loginStep1').style.display='block'">이메일 다시 입력</button></div><div class="login-msg" id="loginMsg"></div></div></div>`;
+  const _e=document.getElementById('liEmail');if(_e)_e.focus();
 }
 function _lmsg(m,err){const el=document.getElementById('loginMsg');if(el){el.textContent=m;el.style.color=err?'var(--sys-red)':'var(--billy-blue)';}}
-function finSendCode(){const email=(document.getElementById('loginEmail').value||'').trim().toLowerCase();if(!/.+@.+\..+/.test(email)){_lmsg('이메일을 확인해 주세요.',true);return;}_loginEmail=email;_lmsg('코드 보내는 중…');sb.auth.signInWithOtp({email,options:{shouldCreateUser:false}}).then(({error})=>{if(error){_lmsg(error.message||'발송 실패 — 등록된 직원 이메일인지 확인하세요.',true);return;}document.getElementById('loginStep1').style.display='none';document.getElementById('loginStep2').style.display='block';_lmsg('메일로 받은 코드를 입력하세요.');});}
-function finVerify(){const token=(document.getElementById('loginCode').value||'').trim();if(!token){_lmsg('코드를 입력하세요.',true);return;}_lmsg('확인 중…');sb.auth.verifyOtp({email:_loginEmail,token,type:'email'}).then(({error})=>{if(error){_lmsg(error.message||'코드가 맞지 않아요.',true);return;}startApp();});}
+function finSendCode(){
+  let email=(document.getElementById('liEmail').value||'').trim().toLowerCase();
+  if(!email){_lmsg('아이디를 입력해 주세요.',true);return;}
+  if(email.indexOf('@')<0)email=email+'@villagebaby.kr';   // 도메인 자동 보완(HR과 동일)
+  _loginEmail=email;_lmsg('확인 중…');
+  sb.rpc('is_roster_email',{p_email:email}).then(({data,error})=>{
+    if(!error&&data===false){_lmsg('등록된 @villagebaby.kr 이메일이 아니에요. 관리자에게 문의하세요.',true);return;}
+    sb.auth.signInWithOtp({email,options:{shouldCreateUser:true}}).then(({error})=>{
+      if(error){_lmsg(error.message||'코드 발송 실패 — 잠시 후 다시.',true);return;}
+      document.getElementById('loginStep1').style.display='none';document.getElementById('loginStep2').style.display='block';
+      const s=document.getElementById('liSent');if(s)s.textContent=email;
+      _lmsg('인증코드를 메일로 보냈어요. (10분 내 입력)');const c=document.getElementById('liCode');if(c)c.focus();
+    });
+  }).catch(()=>_lmsg('네트워크 오류 — 다시 시도하세요.',true));
+}
+function finVerify(){const token=(document.getElementById('liCode').value||'').trim();if(!token){_lmsg('코드를 입력하세요.',true);return;}_lmsg('확인 중…');sb.auth.verifyOtp({email:_loginEmail,token,type:'email'}).then(({error})=>{if(error){_lmsg(error.message||'코드가 맞지 않아요.',true);return;}startApp();});}
 function logout(){if(sb)sb.auth.signOut().then(()=>location.reload());}
 async function startApp(){const ls=document.getElementById('loginScreen');if(ls)ls.remove();document.querySelector('.layout').style.display='';await loadMe();await loadData();const rsel=document.querySelector('.rolesel');if(rsel)rsel.innerHTML='<button class="btn btn-sm btn-secondary btn-block" onclick="logout()">로그아웃</button>';const dn=document.querySelector('.demo-note');if(dn)dn.textContent=ME().name+' · '+ME().rl;render();}
 async function bootstrap(){if(!IS_SUPA){render();return;}try{const{data}=await sb.auth.getSession();if(data&&data.session){await startApp();}else{renderLogin();}}catch(e){renderLogin();}}
