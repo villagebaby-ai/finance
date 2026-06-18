@@ -418,7 +418,7 @@ function filterBar(kind){
   h+=`<div class="filters"><button class="btn btn-sm ${cnt?'btn-line':'btn-secondary'}" onclick="_filterOpen=!_filterOpen;render()">${I.filter}<span>필터${cnt?' · '+cnt:''}</span></button>`;
   h+=`<div class="sortctl"><span class="sl">정렬</span><select onchange="_sort['${kind}'].k=this.value;render()">${SORTS[kind].map(o=>`<option value="${o[0]}" ${_sort[kind].k===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select><button class="btn btn-sm btn-secondary" title="정렬 방향 전환" onclick="_sort['${kind}'].dir*=-1;render()">${_sort[kind].dir<0?'▼':'▲'}</button></div>`;
   if(cnt)h+=`<button class="btn btn-sm btn-secondary" onclick="clearFilter();render()">초기화</button>`;
-  h+=`<div class="search">${I.search}<input placeholder="검색(거래처·금액·적요)" value="${escH(_q)}" oninput="onSearch(this.value)"></div></div>`;
+  h+=`<div class="search">${I.search}<input placeholder="검색(거래처·금액·적요)" value="${escH(_q)}" oninput="onSearchInput(this)" oncompositionstart="onSearchCompStart()" oncompositionend="onSearchCompEnd(this)"></div></div>`;
   if(_filterOpen){
     h+='<div class="card" style="padding:14px 16px;margin-bottom:14px">';
     h+=`<div class="fgroup"><div class="fl">팀</div>${TEAMS_ALL.map(t=>`<button class="chip ${FILTER.teams.has(t)?'on':''}" onclick="tf('teams','${t}')">${escH(t)}</button>`).join('')}</div>`;
@@ -462,7 +462,12 @@ function render(){
   const _rs=document.getElementById('roleSel');if(_rs)_rs.value=ROLE;
   buildNav();p.render();
 }
-function onSearch(v){_q=v;const c=document.getElementById('content');/* 검색은 리렌더 */render();const inp=c.querySelector('.search input');if(inp){inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length);}}
+let _searchT=null,_composing=false;
+function onSearchInput(el){_q=el.value;if(_composing)return;clearTimeout(_searchT);_searchT=setTimeout(_searchRender,200);}
+function onSearchCompStart(){_composing=true;clearTimeout(_searchT);}
+function onSearchCompEnd(el){_composing=false;_q=el.value;clearTimeout(_searchT);_searchT=setTimeout(_searchRender,150);}
+function _searchRender(){const cur=document.querySelector('.search input');const caret=(cur&&document.activeElement===cur)?cur.selectionStart:null;render();const inp=document.querySelector('.search input');if(inp){inp.focus();try{const p=(caret==null)?inp.value.length:caret;inp.setSelectionRange(p,p);}catch(e){}}}
+function onSearch(v){_q=v;_searchRender();}
 function setSort(page,k){const s=_sort[page];if(s.k===k)s.dir*=-1;else{s.k=k;s.dir=(k==='date'||k==='writeDate'||k==='paid'||k==='amount')?-1:1;}render();}
 function sortIcon(page,k){const s=_sort[page];return s.k===k?`<span class="ar">${s.dir>0?'▲':'▼'}</span>`:'';}
 function sortVal(r,page,k){if(k==='amount')return page==='invoice'?(r.total||0):(r.amount||0);if(k==='name')return (page==='invoice'?r.company:r.payee)||'';if(k==='item')return r.itemName||'';if(k==='writeDate')return r.writeDate||'';if(k==='team')return normalizeTeam(r.team)||'';if(k==='status')return r.status||'';if(k==='paid')return r.paidAt||'';return r.applied||'';}
@@ -523,13 +528,13 @@ function renderPayout(){
   if(!list.length){h+=`<div class="card"><div class="empty">${I.empty}<div>표시할 이체 요청이 없습니다.</div></div></div>`;c.innerHTML=h;return;}
   h+='<div class="card"><div class="table-wrap"><table style="--cw:'+colwVar('payout')+'"><thead><tr>';
   if(mineApprove)h+=`<th style="width:36px"><input type="checkbox" class="cbx" ${list.every(r=>_sel.has(r.id))?'checked':''} onclick="toggleAll('payout')"></th>`;
-  h+=`<th class="rz sortable" onclick="setSort('payout','name')">거래처 · 적요${sortIcon('payout','name')}<span class="rzh" data-rz="payout" onclick="event.stopPropagation()"></span></th><th>팀 · 신청인</th><th>분류</th><th class="sortable" onclick="setSort('payout','date')">요청일${sortIcon('payout','date')}</th><th>은행·계좌</th><th class="sortable" style="text-align:right" onclick="setSort('payout','amount')">금액${sortIcon('payout','amount')}</th><th>이상·고액</th><th>상태</th><th></th></tr></thead><tbody>`;
+  h+=`<th class="rz sortable" onclick="setSort('payout','name')">거래처 · 적요${sortIcon('payout','name')}<span class="rzh" data-rz="payout" onclick="event.stopPropagation()"></span></th><th>팀</th><th>신청인</th><th>분류</th><th class="sortable" onclick="setSort('payout','date')">요청일${sortIcon('payout','date')}</th><th>은행·계좌</th><th class="sortable" style="text-align:right" onclick="setSort('payout','amount')">금액${sortIcon('payout','amount')}</th><th>이상·고액</th><th>상태</th><th></th></tr></thead><tbody>`;
   list.forEach(r=>{
     const st=PSTATUS[r.status]||['?',''];const flags=r.status==='requested'?scanPayout(r):[];
     h+='<tr>';
     if(mineApprove)h+=`<td><input type="checkbox" class="cbx" ${_sel.has(r.id)?'checked':''} onclick="toggleSel('${r.id}')"></td>`;
     h+=`<td class="rzc"><div class="t-name">${escH(r.payee)} ${r.category==='유류비'?'<span class="tag tag-fuel">유류비</span>':''}</div><div class="t-sub">${escH(r.purpose||'-')}</div></td>`;
-    h+=`<td>${escH(normalizeTeam(r.team)||'-')}${r.requester?`<div class="t-sub">${escH(r.requester)}</div>`:''}</td>`;
+    h+=`<td>${escH(normalizeTeam(r.team)||'-')}</td><td>${r.requester?escH(r.requester):'<span class="t-sub">-</span>'}</td>`;
     h+=`<td><span class="tag tag-gray">${escH(r.category||'-')}</span></td>`;
     h+=`<td class="t-sub num" style="white-space:nowrap">${escH(r.applied||'-')}</td>`;
     h+=`<td>${escH(r.bank||'-')}<div class="t-sub num">${escH(r.account||'')}</div></td>`;
@@ -567,7 +572,7 @@ function openPayoutForm(seed){
   dupHint();
 }
 function onPayeePick(){const v=findVendor(val('f_payee'));if(v){const pa=v.accounts.find(a=>a.primary)||v.accounts[0];if(pa){document.getElementById('f_bank').value=pa.bank;document.getElementById('f_account').value=pa.account;}document.getElementById('f_unit').value=v.unit;}dupHint();}
-function dupHint(){const el=document.getElementById('f_anom');if(!el)return;const amt=numVal('f_amount');const unit=val('f_unit')||'원';const r={payee:val('f_payee'),account:val('f_account'),amount:amt,unit,category:val('f_cat'),applied:today(),requester:ME().name};if(!r.payee){el.innerHTML='';return;}const flags=scanPayout(r);const big=unit==='원'&&amt>=THRESHOLD;el.innerHTML=(flags.length?'<div style="margin-bottom:6px">'+flags.map(flagHtml).join('')+'</div>':'')+(big?`<div class="preview-box"><span>🔺 1천만 이상</span><b>데모 대표 대표에게 메일 통지됩니다</b></div>`:'');}
+function dupHint(){const el=document.getElementById('f_anom');if(!el)return;const amt=numVal('f_amount');const unit=val('f_unit')||'원';const r={payee:val('f_payee'),account:val('f_account'),amount:amt,unit,category:val('f_cat'),applied:today(),requester:ME().name};if(!r.payee){el.innerHTML='';return;}const flags=scanPayout(r);const big=unit==='원'&&amt>=THRESHOLD;el.innerHTML=(flags.length?'<div style="margin-bottom:6px">'+flags.map(flagHtml).join('')+'</div>':'')+(big?`<div class="t-sub" style="margin-top:6px">🔺 1천만원 이상 — 고액 거래건으로 기록됩니다.</div>`:'');}
 function submitPayout(){
   const r={id:uid('p'),requester:ME().name,team:ME().team,payee:val('f_payee'),bank:val('f_bank'),account:val('f_account'),amount:numVal('f_amount'),unit:val('f_unit')||'원',category:val('f_cat'),purpose:val('f_purpose'),evidence:val('f_evidence'),hasTax:document.getElementById('f_tax').checked,status:'requested',applied:today(),paidAt:''};
   if(!r.payee||!r.account||!r.amount){toast('거래처·계좌·금액은 필수예요.','err');return;}
@@ -751,7 +756,7 @@ function renderVendors(){
   if(_q){const q=_q.toLowerCase();list=list.filter(v=>(v.name+v.bizNo+v.team).toLowerCase().includes(q));}
   const s=_sort.vendors;list.sort((a,b)=>{let r=0;if(s.k==='name')r=a.name.localeCompare(b.name,'ko');else if(s.k==='amount')r=(a.avg||0)-(b.avg||0);else r=(a.cnt||0)-(b.cnt||0);return r*s.dir;});
   let h=`<div class="kpis" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))"><div class="kpi blue"><div class="lbl">거래처</div><div class="val">${VENDORS.length}곳</div></div><div class="kpi"><div class="lbl">사업자번호 보유</div><div class="val">${VENDORS.filter(v=>v.bizNo).length}곳</div></div><div class="kpi orange"><div class="lbl">다계좌 거래처</div><div class="val">${VENDORS.filter(v=>v.accounts.length>1).length}곳</div></div></div>`;
-  h+=`<div class="filters"><div class="search">${I.search}<input placeholder="거래처·사업자번호 검색" value="${escH(_q)}" oninput="onSearch(this.value)"></div></div>`;
+  h+=`<div class="filters"><div class="search">${I.search}<input placeholder="거래처·사업자번호 검색" value="${escH(_q)}" oninput="onSearchInput(this)" oncompositionstart="onSearchCompStart()" oncompositionend="onSearchCompEnd(this)"></div></div>`;
   h+='<div class="card"><div class="table-wrap"><table style="--cw:'+colwVar('vendors')+'"><thead><tr>';
   h+=`<th class="rz sortable" onclick="setSort('vendors','name')">거래처${sortIcon('vendors','name')}<span class="rzh" data-rz="vendors" onclick="event.stopPropagation()"></span></th><th>사업자번호</th><th>팀</th><th>대표계좌</th><th>계좌</th><th class="sortable" style="text-align:right" onclick="setSort('vendors','cnt')">거래수${sortIcon('vendors','cnt')}</th><th class="sortable" style="text-align:right" onclick="setSort('vendors','amount')">평균금액${sortIcon('vendors','amount')}</th><th></th></tr></thead><tbody>`;
   list.forEach(v=>{const pa=v.accounts.find(a=>a.primary)||v.accounts[0];
