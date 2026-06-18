@@ -95,6 +95,7 @@ th.rz{position:relative}.rzh{position:absolute;top:0;right:-4px;width:9px;height
 .period-bar{margin-bottom:12px}.sortctl{display:inline-flex;align-items:center;gap:6px}.sortctl .sl{font-size:12px;color:var(--gray);font-weight:600}.filters select{height:34px;border:1px solid var(--gray-200);border-radius:9px;padding:0 8px;font-size:12.5px;background:#fff;color:var(--gray-800);cursor:pointer}.seg-range{display:flex;align-items:center;gap:8px;margin:9px 0 2px;font-size:13px;color:var(--gray-700)}.seg-range input{height:34px;padding:0 10px;border:1px solid var(--gray-200);border-radius:9px;font-size:13px}
 .sumbar{display:flex;align-items:center;gap:18px;flex-wrap:wrap;background:var(--billy-blue-50);border:1px solid var(--billy-blue-100);border-radius:12px;padding:10px 16px;margin-bottom:14px;font-size:13px;color:var(--gray-800)}.sumbar .sb-seg span{color:var(--gray)}.sumbar b{font-weight:800}.sumbar .sb-x{margin-left:auto}
 .todo{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff7ed;border:1px solid #ffe2bb;border-radius:12px;padding:10px 15px;margin-bottom:14px;font-size:13px}.todo.ok{background:#e8f6ee;border-color:#bce6cf;color:#1f7a45}.todo-h{font-weight:800;color:var(--billy-blue)}.todo-item{background:#fff;border:1px solid var(--gray-200);border-radius:999px;padding:6px 13px;cursor:pointer;font-size:12.5px;color:var(--gray-800)}.todo-item b{color:var(--sys-orange)}.todo-item.warn b{color:var(--sys-red)}.todo-item:hover{box-shadow:0 0 0 2px var(--billy-blue-50)}
+.flagwrap{cursor:pointer}.anom-card{border:1px solid var(--gray-200);border-radius:10px;padding:11px 13px;margin-bottom:10px}.anom-card.warn{background:#fdecec;border-color:#f7c9c9}.anom-card.caution{background:#fff7ed;border-color:#ffe2bb}.anom-t{font-weight:800;font-size:13px;margin-bottom:3px}.anom-d{font-size:12.5px;color:var(--gray-700);margin-bottom:8px;line-height:1.5}.anom-list{display:flex;flex-direction:column;gap:5px}.anom-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:12.5px;background:#fff;border:1px solid var(--gray-100);border-radius:8px;padding:6px 10px}.anom-row span{color:var(--gray)}.anom-row b{font-weight:700;color:var(--gray-800)}.anom-row.warn{border-color:#f7c9c9;background:#fff6f6}
 .num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .amt{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
 .ellip{max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -247,6 +248,7 @@ const I={
   m_money:'<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9v6M18 9v6"/></svg>',
   m_doc:'<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg>',
   m_vendor:'<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-3"/><path d="M9 9v.01M9 12v.01M9 15v.01"/></svg>',
+  m_alert:'<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>',
 };
 /* ---------- 헬퍼 ---------- */
 function escH(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -346,9 +348,43 @@ function scanPayout(r,excludeId){
   return flags;
 }
 const flagHtml=f=>`<span class="flag ${f.s}" title="${escH(f.d)}">${f.t}</span>`;
+function anomalyDetail(id){
+  const r=DB.payout.find(x=>x.id===id);if(!r)return;
+  const v=findVendor(r.payee);const flags=scanPayout(r);
+  const stb=s=>{const st=PSTATUS[s]||['?',''];return `<span class="badge ${st[1]}">${st[0]}</span>`;};
+  let b=`<div class="dl"><dt>거래처/예금주</dt><dd>${escH(r.payee)}</dd><dt>금액</dt><dd><b>${won(r.amount)} ${escH(r.unit)}</b></dd><dt>은행·계좌</dt><dd>${escH(r.bank||'-')} <span class="num">${escH(r.account||'-')}</span></dd><dt>요청일</dt><dd>${escH(r.applied||'-')}</dd><dt>분류·적요</dt><dd>${escH(r.category||'-')} · ${escH(r.purpose||'-')}</dd></div>`;
+  if(!flags.length){b+='<div class="hr"></div><div class="t-sub">지금은 감지된 이상 신호가 없어요 👍</div>';}
+  else{b+='<div class="hr"></div>';flags.forEach(f=>{
+    b+=`<div class="anom-card ${f.s}"><div class="anom-t">${f.t}</div><div class="anom-d">${escH(f.d)}</div>`;
+    if(/중복/.test(f.t)){const dups=DB.payout.filter(x=>x.id!==r.id&&x.status!=='canceled'&&x.status!=='rejected'&&payDup(x)===payDup(r)&&Math.abs(daysBetween(r.applied||today(),x.applied))<=14);b+=`<div class="anom-list">${dups.map(d=>`<div class="anom-row warn"><span>${escH(d.applied||'-')}</span><b>${won(d.amount)}원</b>${stb(d.status)}<span>${escH(d.purpose||'')}</span></div>`).join('')||'<div class="t-sub">매칭 내역 없음</div>'}</div>`;}
+    else if(/계좌/.test(f.t)&&v){b+=`<div class="anom-list">${v.accounts.map(a=>`<div class="anom-row"><span>${a.primary?'대표계좌':'등록계좌'}</span><span>${escH(a.bank||'-')}</span><b class="num">${escH(a.account)}</b></div>`).join('')}<div class="anom-row warn"><span>이번 요청</span><span>${escH(r.bank||'-')}</span><b class="num">${escH(r.account||'-')}</b></div></div>`;}
+    else if(/급증|급감/.test(f.t)&&v){b+=`<div class="anom-list"><div class="anom-row warn"><span>이번 금액</span><b>${won(r.amount)}원</b></div><div class="anom-row"><span>과거 평균</span><b>${won(v.avg)}원</b></div><div class="anom-row"><span>과거 최대</span><b>${won(v.max)}원</b></div><div class="anom-row"><span>거래 횟수</span><b>${v.cnt}회</b></div></div>`;}
+    else if(/첫거래/.test(f.t)){b+=`<div class="t-sub">과거 이체·세금계산서 이력에서 이 거래처를 찾지 못했어요. 사업자등록증·통장 사본 확인을 권장해요.</div>`;}
+    b+='</div>';
+  });}
+  if(v){const hist=DB.payout.filter(x=>{const fv=findVendor(x.payee);return fv&&fv.id===v.id;}).sort((a,c)=>String(c.applied||'').localeCompare(String(a.applied||''))).slice(0,6);b+=`<div class="hr"></div><div style="font-weight:700;font-size:13px;margin-bottom:8px">📜 ${escH(v.name)} 최근 이체 (평균 ${won(v.avg)}원 · 총 ${v.cnt}회)</div><div class="anom-list">${hist.map(d=>`<div class="anom-row"><span>${escH(d.applied||'-')}</span><b>${won(d.amount)}${d.unit==='원'?'원':' '+d.unit}</b><span>${escH(d.purpose||'')}</span></div>`).join('')||'<div class="t-sub">이력 없음</div>'}</div>`;}
+  modal('⚠️ 이상거래 검토 — '+r.payee,'',b,`<button class="btn btn-secondary" onclick="closeModal()">닫기</button><button class="btn btn-primary" onclick="closeModal();viewPayout('${id}')">이체 상세 열기</button>`);
+}
+function renderAnomalies(){
+  const c=document.getElementById('content');
+  const base=visible(DB.payout,'payout');
+  const rows=base.map(r=>({r,f:scanPayout(r)})).filter(x=>x.f.length);
+  const isW=x=>x.f.some(f=>f.s==='warn');
+  rows.sort((a,b)=>(isW(a)?0:1)-(isW(b)?0:1)||String(b.r.applied||'').localeCompare(String(a.r.applied||'')));
+  const warnN=rows.filter(isW).length;
+  let h=`<div class="period-bar">${periodSel()}</div>`;
+  h+=`<div class="sumbar"><div class="sb-seg"><span>검토 대상</span> <b>${rows.length}건</b></div><div class="sb-seg"><span>⚠️ 중대 (계좌변경·금액급증·중복)</span> <b>${warnN}건</b></div></div>`;
+  if(!rows.length){h+=`<div class="card"><div class="empty">${I.check}<div>감지된 이상 신호가 없어요 👍 (기간을 넓혀 보세요)</div></div></div>`;c.innerHTML=h;return;}
+  h+='<div class="card"><div class="table-wrap"><table style="--cw:'+colwVar('payout')+'"><thead><tr>';
+  h+=`<th class="rz">거래처 · 적요<span class="rzh" data-rz="payout" onclick="event.stopPropagation()"></span></th><th style="text-align:right">금액</th><th>요청일</th><th>상태</th><th>이상 신호</th><th></th></tr></thead><tbody>`;
+  rows.forEach(({r,f})=>{const st=PSTATUS[r.status]||['?',''];
+    h+=`<tr style="cursor:pointer" onclick="anomalyDetail('${r.id}')"><td class="rzc"><div class="t-name">${escH(r.payee)}</div><div class="t-sub">${escH(r.purpose||'')}</div></td><td style="text-align:right" class="num">${won(r.amount)}${r.unit==='원'?'원':' '+r.unit}</td><td class="t-sub num" style="white-space:nowrap">${escH(r.applied||'-')}</td><td><span class="badge ${st[1]}">${st[0]}</span></td><td style="white-space:normal;max-width:260px">${f.map(flagHtml).join('')}</td><td><button class="iconbtn" title="근거 보기" onclick="event.stopPropagation();anomalyDetail('${r.id}')">${I.eye}</button></td></tr>`;
+  });
+  h+='</tbody></table></div></div>';c.innerHTML=h;
+}
 /* ===================== 상태/필터/기간 ===================== */
 let current='dashboard',_sel=new Set(),_q='',_filterOpen=false;
-let _sort={payout:{k:'date',dir:-1},invoice:{k:'date',dir:-1},vendors:{k:'cnt',dir:-1}};
+let _sort={payout:{k:'date',dir:-1},invoice:{k:'writeDate',dir:-1},vendors:{k:'cnt',dir:-1}};
 const SORTS={payout:[['date','요청일'],['name','거래처명'],['amount','금액'],['team','팀'],['status','상태'],['paid','지급일']],invoice:[['date','요청일'],['name','공급받는자'],['item','품목'],['writeDate','작성일'],['amount','합계'],['status','상태']]};
 let FILTER={teams:new Set(),requesters:new Set(),statuses:new Set(),anomaly:false,big:false};
 let PERIOD='all',PFROM='',PTO=''; // month | ytd | all | custom
@@ -398,12 +434,13 @@ const PAGES={
   payout:{t:'이체 요청',d:'이체가 필요한 건을 신청·처리합니다.',render:renderPayout},
   invoice:{t:'세금계산서 발행 요청',d:'세금계산서 발행 요청을 등록·처리합니다.',render:renderInvoice},
   vendors:{t:'거래처 관리',d:'사업자번호로 통합된 거래처와 계좌를 관리합니다.',render:renderVendors},
+  anomaly:{t:'이상거래 검토',d:'이상 신호가 감지된 이체를 모아서 검토합니다. 항목을 클릭하면 감지 근거(중복 내역·계좌·과거 통계)가 나와요.',render:renderAnomalies},
 };
-const NAV=[['dashboard','대시보드','m_dash'],['payout','이체 요청','m_money'],['invoice','세금계산서 발행','m_doc'],['vendors','거래처 관리','m_vendor']];
+const NAV=[['dashboard','대시보드','m_dash'],['payout','이체 요청','m_money'],['invoice','세금계산서 발행','m_doc'],['anomaly','이상거래 검토','m_alert'],['vendors','거래처 관리','m_vendor']];
 function buildNav(){
   let h='<div class="nav-label">재무 업무</div>';
   NAV.forEach(([k,label,ic])=>{
-    if(k==='vendors'&&!canViewAll())return;
+    if((k==='vendors'||k==='anomaly')&&!canViewAll())return;
     let dot='';
     if(canApprove()&&(k==='payout'||k==='invoice')){const arr=k==='payout'?DB.payout:DB.invoice;const c=arr.filter(r=>r.status==='requested').length;if(c)dot=`<span class="dot">${c}</span>`;}
     h+=`<div class="nav-item${current===k?' active':''}" onclick="go('${k}')">${I[ic]}<span>${label}</span>${dot}</div>`;
@@ -441,7 +478,9 @@ function invoiceSumBar(list){const supply=list.reduce((s,r)=>s+r.supply,0),vat=l
 function todoBanner(){const pend=DB.payout.filter(r=>r.status==='requested');const pendKrw=pend.filter(r=>r.unit==='원').reduce((s,r)=>s+r.amount,0);const now=new Date(today());const due=DB.invoice.filter(r=>{if(r.status!=='requested')return false;const dl=invoiceDeadline(r.writeDate);if(!dl)return false;return Math.round((dl-now)/86400000)<=3;});const overdue=due.filter(r=>(invoiceDeadline(r.writeDate)-now)<0).length;if(!pend.length&&!due.length)return `<div class="todo ok">✅ 오늘 처리할 미지급·발행 항목이 없어요.</div>`;let it=[];if(pend.length)it.push(`<button class="todo-item" onclick="current='payout';clearFilter();FILTER.statuses=new Set(['requested']);render()"><b>${pend.length}건</b> 미지급 대기 · <span>${won(pendKrw)}원</span></button>`);if(due.length)it.push(`<button class="todo-item warn" onclick="current='invoice';clearFilter();_sort.invoice={k:'writeDate',dir:1};render()"><b>${due.length}건</b> 세금계산서 발행기한 임박${overdue?' (기한 지남 '+overdue+')':''}</button>`);return `<div class="todo"><span class="todo-h">📌 오늘 할 일</span>${it.join('')}</div>`;}
 function renderDashboard(){
   const c=document.getElementById('content');
-  const P=DB.payout.filter(r=>inPeriod(r.applied)),Iv=DB.invoice.filter(r=>inPeriod(r.applied));
+  const EXCLUDE_TEAMS=new Set(['사채업자','글로벌','앱팀 (재미팀)','앱 (재미)']);
+  const isInternalPay=r=>/^(주식회사\s*|국세[_\s]*)?빌리지베이비/.test(r.payee||'');
+  const P=DB.payout.filter(r=>inPeriod(r.applied)&&!EXCLUDE_TEAMS.has(normalizeTeam(r.team))&&!isInternalPay(r)),Iv=DB.invoice.filter(r=>inPeriod(r.applied)&&!EXCLUDE_TEAMS.has(normalizeTeam(r.team)));
   const krw=P.filter(r=>r.unit==='원');
   const totalAmt=krw.reduce((s,r)=>s+r.amount,0);
   const pending=P.filter(r=>r.status==='requested');
@@ -484,17 +523,18 @@ function renderPayout(){
   if(!list.length){h+=`<div class="card"><div class="empty">${I.empty}<div>표시할 이체 요청이 없습니다.</div></div></div>`;c.innerHTML=h;return;}
   h+='<div class="card"><div class="table-wrap"><table style="--cw:'+colwVar('payout')+'"><thead><tr>';
   if(mineApprove)h+=`<th style="width:36px"><input type="checkbox" class="cbx" ${list.every(r=>_sel.has(r.id))?'checked':''} onclick="toggleAll('payout')"></th>`;
-  h+=`<th class="rz sortable" onclick="setSort('payout','name')">거래처/예금주${sortIcon('payout','name')}<span class="rzh" data-rz="payout" onclick="event.stopPropagation()"></span></th><th>팀</th><th>은행·계좌</th><th class="sortable" style="text-align:right" onclick="setSort('payout','amount')">금액${sortIcon('payout','amount')}</th><th>이상</th><th>고액</th><th>상태</th><th></th></tr></thead><tbody>`;
+  h+=`<th class="rz sortable" onclick="setSort('payout','name')">거래처 · 적요${sortIcon('payout','name')}<span class="rzh" data-rz="payout" onclick="event.stopPropagation()"></span></th><th>팀</th><th>분류</th><th class="sortable" onclick="setSort('payout','date')">요청일${sortIcon('payout','date')}</th><th>은행·계좌</th><th class="sortable" style="text-align:right" onclick="setSort('payout','amount')">금액${sortIcon('payout','amount')}</th><th>이상·고액</th><th>상태</th><th></th></tr></thead><tbody>`;
   list.forEach(r=>{
     const st=PSTATUS[r.status]||['?',''];const flags=r.status==='requested'?scanPayout(r):[];
     h+='<tr>';
     if(mineApprove)h+=`<td><input type="checkbox" class="cbx" ${_sel.has(r.id)?'checked':''} onclick="toggleSel('${r.id}')"></td>`;
-    h+=`<td class="rzc"><div class="t-name">${escH(r.payee)} ${r.category==='유류비'?'<span class="tag tag-fuel">유류비</span>':''}</div><div class="t-sub">${escH(r.category||'')} · ${escH(r.applied)}</div></td>`;
+    h+=`<td class="rzc"><div class="t-name">${escH(r.payee)} ${r.category==='유류비'?'<span class="tag tag-fuel">유류비</span>':''}</div><div class="t-sub">${escH(r.purpose||'-')}</div></td>`;
     h+=`<td>${escH(normalizeTeam(r.team)||'-')}</td>`;
+    h+=`<td><span class="tag tag-gray">${escH(r.category||'-')}</span></td>`;
+    h+=`<td class="t-sub num" style="white-space:nowrap">${escH(r.applied||'-')}</td>`;
     h+=`<td>${escH(r.bank||'-')}<div class="t-sub num">${escH(r.account||'')}</div></td>`;
     h+=`<td style="text-align:right"><span class="amt">${won(r.amount)}</span>${r.unit!=='원'?' <span class="t-sub">'+r.unit+'</span>':''}</td>`;
-    h+=`<td style="max-width:150px;white-space:normal">${flags.length?flags.map(flagHtml).join(''):'<span class="t-sub">–</span>'}</td>`;
-    h+=`<td>${isBig(r)?'<span class="tag tag-blue">🔺 고액</span>':'<span class="t-sub">–</span>'}</td>`;
+    h+=`<td style="max-width:175px;white-space:normal">${flags.length?`<span class="flagwrap" onclick="anomalyDetail('${r.id}')" title="클릭하면 감지 근거 보기">${flags.map(flagHtml).join('')}</span>`:''}${isBig(r)?(flags.length?' ':'')+'<span class="tag tag-blue">🔺 고액</span>':(flags.length?'':'<span class="t-sub">–</span>')}</td>`;
     h+=`<td><span class="badge ${st[1]}">${st[0]}</span></td>`;
     h+='<td><div class="rowact">';
     h+=`<button class="iconbtn" title="상세" onclick="viewPayout('${r.id}')">${I.eye}</button>`;
