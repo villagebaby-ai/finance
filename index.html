@@ -523,13 +523,13 @@ function renderPayout(){
   if(!list.length){h+=`<div class="card"><div class="empty">${I.empty}<div>표시할 이체 요청이 없습니다.</div></div></div>`;c.innerHTML=h;return;}
   h+='<div class="card"><div class="table-wrap"><table style="--cw:'+colwVar('payout')+'"><thead><tr>';
   if(mineApprove)h+=`<th style="width:36px"><input type="checkbox" class="cbx" ${list.every(r=>_sel.has(r.id))?'checked':''} onclick="toggleAll('payout')"></th>`;
-  h+=`<th class="rz sortable" onclick="setSort('payout','name')">거래처 · 적요${sortIcon('payout','name')}<span class="rzh" data-rz="payout" onclick="event.stopPropagation()"></span></th><th>팀</th><th>분류</th><th class="sortable" onclick="setSort('payout','date')">요청일${sortIcon('payout','date')}</th><th>은행·계좌</th><th class="sortable" style="text-align:right" onclick="setSort('payout','amount')">금액${sortIcon('payout','amount')}</th><th>이상·고액</th><th>상태</th><th></th></tr></thead><tbody>`;
+  h+=`<th class="rz sortable" onclick="setSort('payout','name')">거래처 · 적요${sortIcon('payout','name')}<span class="rzh" data-rz="payout" onclick="event.stopPropagation()"></span></th><th>팀 · 신청인</th><th>분류</th><th class="sortable" onclick="setSort('payout','date')">요청일${sortIcon('payout','date')}</th><th>은행·계좌</th><th class="sortable" style="text-align:right" onclick="setSort('payout','amount')">금액${sortIcon('payout','amount')}</th><th>이상·고액</th><th>상태</th><th></th></tr></thead><tbody>`;
   list.forEach(r=>{
     const st=PSTATUS[r.status]||['?',''];const flags=r.status==='requested'?scanPayout(r):[];
     h+='<tr>';
     if(mineApprove)h+=`<td><input type="checkbox" class="cbx" ${_sel.has(r.id)?'checked':''} onclick="toggleSel('${r.id}')"></td>`;
     h+=`<td class="rzc"><div class="t-name">${escH(r.payee)} ${r.category==='유류비'?'<span class="tag tag-fuel">유류비</span>':''}</div><div class="t-sub">${escH(r.purpose||'-')}</div></td>`;
-    h+=`<td>${escH(normalizeTeam(r.team)||'-')}</td>`;
+    h+=`<td>${escH(normalizeTeam(r.team)||'-')}${r.requester?`<div class="t-sub">${escH(r.requester)}</div>`:''}</td>`;
     h+=`<td><span class="tag tag-gray">${escH(r.category||'-')}</span></td>`;
     h+=`<td class="t-sub num" style="white-space:nowrap">${escH(r.applied||'-')}</td>`;
     h+=`<td>${escH(r.bank||'-')}<div class="t-sub num">${escH(r.account||'')}</div></td>`;
@@ -551,6 +551,7 @@ function openPayoutForm(seed){
   const cats=CATEGORIES.filter(x=>x!=='유류비').map(x=>`<option ${seed.category===x?'selected':''}>${x}</option>`).join('');
   const cur=CURRENCIES.map(x=>`<option ${seed.unit===x?'selected':''}>${x}</option>`).join('');
   modal('새 이체 요청','wide',POLICY_HTML+`
+    <div class="t-sub" style="margin:0 0 12px">신청인: <b>${escH(ME().name)}</b>${ME().team?' · '+escH(normalizeTeam(ME().team)):''} <span style="color:var(--gray)">(요청 시 자동 기록)</span></div>
     <div class="form-row"><label>거래처/예금주 <span class="req">*</span><span class="hint">검색 후 선택 시 계좌 자동입력</span></label><input class="input" id="f_payee" value="${escH(seed.payee||'')}" placeholder="거래처명" list="vlist" oninput="onPayeePick()"><datalist id="vlist">${VENDORS.map(v=>`<option value="${escH(v.name)}">`).join('')}</datalist></div>
     <div class="f2"><div class="form-row"><label>은행 <span class="req">*</span></label><select class="input" id="f_bank">${banks}</select></div><div class="form-row"><label>계좌번호 <span class="req">*</span></label><input class="input num" id="f_account" value="${escH(seed.account||'')}" placeholder="- 없이 숫자" oninput="dupHint()"></div></div>
     <div class="f2"><div class="form-row"><label>금액 <span class="req">*</span></label><input class="input num" id="f_amount" value="${seed.amount?won(seed.amount):''}" placeholder="0" oninput="this.value=comma(this.value);dupHint()"></div><div class="form-row"><label>통화</label><select class="input" id="f_unit">${cur}</select></div></div>
@@ -619,6 +620,7 @@ function viewPayout(id){
     <dt>분류</dt><dd>${escH(r.category||'-')}</dd>
     <dt>적요</dt><dd>${escH(r.purpose||'-')}</dd>
     <dt>세금계산서</dt><dd>${r.hasTax?'발행 대상':'해당 없음'}</dd>
+    <dt>신청인</dt><dd>${escH(r.requester||'-')}</dd>
     <dt>팀</dt><dd>${escH(normalizeTeam(r.team)||'-')}</dd>
     <dt>고액 이체건</dt><dd>${isBig(r)?'🔺 1천만+ (고액)':'해당 없음'}</dd>
     ${r.paidAt?`<dt>지급완료</dt><dd>${escH(r.paidAt)}</dd>`:''}
@@ -736,7 +738,7 @@ function cloneInvoice(id){const r=DB.invoice.find(x=>x.id===id);if(!r)return;ope
 function viewInvoice(id){const r=DB.invoice.find(x=>x.id===id);if(!r)return;const st=ISTATUS[r.status];
   let foot='<button class="btn btn-secondary" onclick="closeModal()">닫기</button>';
   if(canApprove()&&r.status==='requested')foot=`<button class="btn btn-danger" onclick="decideInvoice('${id}','rejected')">반려</button><button class="btn btn-primary" onclick="decideInvoice('${id}','issued')">발행완료</button>`;
-  modal('세금계산서 발행 요청 상세','',`<div style="margin-bottom:10px">${deadlineBadge(r.writeDate)}</div><div class="dl"><dt>상태</dt><dd><span class="badge ${st[1]}">${st[0]}</span></dd><dt>구분</dt><dd>${escH(r.saleType||'매출')}</dd><dt>상호</dt><dd>${escH(r.company)} (${escH(r.ceo)})</dd><dt>사업자번호</dt><dd class="num">${escH(r.bizNo)}</dd><dt>이메일</dt><dd>${escH(r.email)}</dd><dt>품목</dt><dd>${escH(r.itemName)}</dd><dt>작성일자</dt><dd>${escH(r.writeDate)}</dd><dt>공급가액</dt><dd>${won(r.supply)}원</dd><dt>세액</dt><dd>${won(r.tax)}원</dd><dt>합계</dt><dd><b>${won(r.total)}원</b></dd><dt>팀</dt><dd>${escH(normalizeTeam(r.team)||'-')}</dd>${r.evidence?`<dt>증빙</dt><dd><a href="${escH(r.evidence)}" target="_blank" rel="noopener" style="color:var(--billy-blue);text-decoration:underline">Dropbox 링크 ↗</a></dd>`:''}</div>`,foot);
+  modal('세금계산서 발행 요청 상세','',`<div style="margin-bottom:10px">${deadlineBadge(r.writeDate)}</div><div class="dl"><dt>상태</dt><dd><span class="badge ${st[1]}">${st[0]}</span></dd><dt>구분</dt><dd>${escH(r.saleType||'매출')}</dd><dt>상호</dt><dd>${escH(r.company)} (${escH(r.ceo)})</dd><dt>사업자번호</dt><dd class="num">${escH(r.bizNo)}</dd><dt>이메일</dt><dd>${escH(r.email)}</dd><dt>품목</dt><dd>${escH(r.itemName)}</dd><dt>작성일자</dt><dd>${escH(r.writeDate)}</dd><dt>공급가액</dt><dd>${won(r.supply)}원</dd><dt>세액</dt><dd>${won(r.tax)}원</dd><dt>합계</dt><dd><b>${won(r.total)}원</b></dd><dt>신청인</dt><dd>${escH(r.requester||'-')}</dd><dt>팀</dt><dd>${escH(normalizeTeam(r.team)||'-')}</dd>${r.evidence?`<dt>증빙</dt><dd><a href="${escH(r.evidence)}" target="_blank" rel="noopener" style="color:var(--billy-blue);text-decoration:underline">Dropbox 링크 ↗</a></dd>`:''}</div>`,foot);
 }
 function decideInvoice(id,status){sv('fin_decide_invoice',{p_id:id,p_status:status,p_reason:''},()=>{const r=DB.invoice.find(x=>x.id===id);if(r){r.status=status;if(status==='issued')r.issuedAt=today();}}).then(()=>{closeModal();render();toast(status==='issued'?'발행완료로 표시했어요.':'반려했어요.',status==='rejected'?'err':'ok');});}
 function batchInvoice(status){const ss=DB.invoice.filter(r=>_sel.has(r.id)&&r.status==='requested');if(IS_SUPA){Promise.all(ss.map(r=>sb.rpc('fin_decide_invoice',{p_id:r.id,p_status:status,p_reason:''}))).then(()=>loadData()).then(()=>{_sel=new Set();render();toast(ss.length+'건 처리.','ok');}).catch(()=>toast('일부 처리 실패','err'));}else{ss.forEach(r=>{r.status='issued';});_sel=new Set();render();toast(ss.length+'건 처리.','ok');}}
