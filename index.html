@@ -96,6 +96,9 @@ th.rz{position:relative}.rzh{position:absolute;top:0;right:-4px;width:9px;height
 .sumbar{display:flex;align-items:center;gap:18px;flex-wrap:wrap;background:var(--billy-blue-50);border:1px solid var(--billy-blue-100);border-radius:12px;padding:10px 16px;margin-bottom:14px;font-size:13px;color:var(--gray-800)}.sumbar .sb-seg span{color:var(--gray)}.sumbar b{font-weight:800}.sumbar .sb-x{margin-left:auto}
 .todo{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff7ed;border:1px solid #ffe2bb;border-radius:12px;padding:10px 15px;margin-bottom:14px;font-size:13px}.todo.ok{background:#e8f6ee;border-color:#bce6cf;color:#1f7a45}.todo-h{font-weight:800;color:var(--billy-blue)}.todo-item{background:#fff;border:1px solid var(--gray-200);border-radius:999px;padding:6px 13px;cursor:pointer;font-size:12.5px;color:var(--gray-800)}.todo-item b{color:var(--sys-orange)}.todo-item.warn b{color:var(--sys-red)}.todo-item:hover{box-shadow:0 0 0 2px var(--billy-blue-50)}
 .flagwrap{cursor:pointer}.anom-card{border:1px solid var(--gray-200);border-radius:10px;padding:11px 13px;margin-bottom:10px}.anom-card.warn{background:#fdecec;border-color:#f7c9c9}.anom-card.caution{background:#fff7ed;border-color:#ffe2bb}.anom-t{font-weight:800;font-size:13px;margin-bottom:3px}.anom-d{font-size:12.5px;color:var(--gray-700);margin-bottom:8px;line-height:1.5}.anom-list{display:flex;flex-direction:column;gap:5px}.anom-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:12.5px;background:#fff;border:1px solid var(--gray-100);border-radius:8px;padding:6px 10px}.anom-row span{color:var(--gray)}.anom-row b{font-weight:700;color:var(--gray-800)}.anom-row.warn{border-color:#f7c9c9;background:#fff6f6}
+.rowclk{cursor:pointer}tbody tr.rowclk:hover{background:var(--billy-blue-50)}
+.filtwrap{position:relative;z-index:60}.filterpop{position:absolute;top:calc(100% + 6px);left:0;background:#fff;border:1px solid var(--gray-200);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.14);padding:14px 16px;min-width:300px;max-width:min(92vw,420px)}.filtpop-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--gray-100)}.filt-backdrop{position:fixed;inset:0;z-index:55;background:transparent}
+.mnav{display:none}.mnav-item{display:inline-flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0;border:none;background:transparent;color:var(--gray-600);font-size:11px;font-weight:600;padding:5px 13px;border-radius:10px;cursor:pointer;position:relative}.mnav-item svg{width:20px;height:20px;stroke:var(--gray-600);stroke-width:1.7;fill:none}.mnav-item.active{color:var(--billy-blue);background:var(--billy-blue-50)}.mnav-item.active svg{stroke:var(--billy-blue)}.mnav-item .dot{position:absolute;top:1px;right:8px;margin:0}
 .num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .amt{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
 .ellip{max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -181,7 +184,27 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 .acct-row .ab{flex:1;min-width:0}
 .acct-row .abk{font-weight:700;font-size:13px}
 .acct-row .anum{font-size:12.5px;color:var(--gray-700)}
-@media(max-width:880px){.sidebar{display:none}.topbar{flex-direction:column}.search{margin-left:0;width:100%}.search input{width:100%}}
+@media(max-width:880px){
+  .sidebar{display:none}
+  .mnav{display:flex;gap:2px;overflow-x:auto;padding:6px 2px;margin:0 0 12px;border-bottom:1px solid var(--gray-200);position:sticky;top:0;background:#fff;z-index:30;-webkit-overflow-scrolling:touch}
+  .topbar{flex-direction:column;align-items:stretch;gap:10px}
+  .topbar-actions{display:flex;flex-wrap:wrap;gap:6px}
+  .search{margin-left:0;width:100%}.search input{width:100%}
+  .filters{flex-wrap:wrap}.filterpop{min-width:0;width:88vw}
+  .kpis.dash{grid-template-columns:1fr 1fr}
+  .mhide{display:none!important}
+  /* 카드형 목록(이체·세금계산서) — 가로 스크롤 대신 행=카드 */
+  .table-wrap{overflow-x:visible}
+  .cardtbl thead{display:none}.cardtbl,.cardtbl tbody{display:block;min-width:0;width:100%}
+  .cardtbl tr{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;border:1px solid var(--gray-200);border-radius:12px;margin-bottom:10px;padding:11px 13px;background:#fff}
+  .cardtbl td{display:block;border:none!important;padding:0!important;text-align:left!important}
+  .cardtbl td.rzc{flex:1 1 100%;margin-bottom:3px}
+  .cardtbl td.rzc>div{max-width:none!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important}
+  .cardtbl .amt{font-size:16px;font-weight:800}
+  .cardtbl .rowact{justify-content:flex-end}
+  .cardtbl td:last-child{margin-left:auto}
+  table:not(.cardtbl){min-width:0;font-size:13px}
+}
 /* 로그인(HR과 동일 — 아이디만 입력, @villagebaby.kr 고정) */
 .btn-pill{border-radius:999px}
 .email-row{display:flex;align-items:stretch;border:1.4px solid var(--gray-300);border-radius:var(--r-md);overflow:hidden;background:#fff}
@@ -213,6 +236,7 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
   </aside>
   <div class="main">
     <div class="topbar"><div class="page-h"><h1 id="pgTitle">대시보드</h1><p id="pgDesc"></p></div><div class="topbar-actions" id="pgActions"></div></div>
+    <nav class="mnav" id="mnav"></nav>
     <div class="content" id="content"></div>
   </div>
 </div>
@@ -387,7 +411,7 @@ let current='dashboard',_sel=new Set(),_q='',_filterOpen=false;
 let _sort={payout:{k:'date',dir:-1},invoice:{k:'writeDate',dir:-1},vendors:{k:'cnt',dir:-1}};
 const SORTS={payout:[['date','요청일'],['name','거래처명'],['amount','금액'],['team','팀'],['status','상태'],['paid','지급일']],invoice:[['date','요청일'],['name','공급받는자'],['item','품목'],['writeDate','작성일'],['amount','합계'],['status','상태']]};
 let FILTER={teams:new Set(),requesters:new Set(),statuses:new Set(),anomaly:false,big:false};
-let PERIOD='all',PFROM='',PTO=''; // month | ytd | all | custom
+let PERIOD='month',PFROM='',PTO=''; // month | ytd | all | custom (기본=이번달)
 function clearFilter(){FILTER={teams:new Set(),requesters:new Set(),statuses:new Set(),anomaly:false,big:false};_q='';}
 /* 컬럼 너비 조절(거래처/예금주 등 첫 열) — 드래그로 조절, localStorage 저장 */
 let COLW=(function(){try{return JSON.parse(localStorage.getItem('fin_colw')||'{}')}catch(e){return {}}})();
@@ -415,17 +439,19 @@ function filterBar(kind){
   const stats=Object.keys(sm);
   const cnt=FILTER.teams.size+FILTER.statuses.size+(FILTER.anomaly?1:0)+(FILTER.big?1:0);
   let h=`<div class="period-bar">${periodSel()}</div>`;
-  h+=`<div class="filters"><button class="btn btn-sm ${cnt?'btn-line':'btn-secondary'}" onclick="_filterOpen=!_filterOpen;render()">${I.filter}<span>필터${cnt?' · '+cnt:''}</span></button>`;
-  h+=`<div class="sortctl"><span class="sl">정렬</span><select onchange="_sort['${kind}'].k=this.value;render()">${SORTS[kind].map(o=>`<option value="${o[0]}" ${_sort[kind].k===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select><button class="btn btn-sm btn-secondary" title="정렬 방향 전환" onclick="_sort['${kind}'].dir*=-1;render()">${_sort[kind].dir<0?'▼':'▲'}</button></div>`;
-  if(cnt)h+=`<button class="btn btn-sm btn-secondary" onclick="clearFilter();render()">초기화</button>`;
-  h+=`<div class="search">${I.search}<input placeholder="검색(거래처·금액·적요)" value="${escH(_q)}" oninput="onSearchInput(this)" oncompositionstart="onSearchCompStart()" oncompositionend="onSearchCompEnd(this)"></div></div>`;
+  h+=`<div class="filters"><div class="filtwrap"><button class="btn btn-sm ${cnt?'btn-line':'btn-secondary'}" onclick="event.stopPropagation();_filterOpen=!_filterOpen;render()">${I.filter}<span>필터${cnt?' · '+cnt:''}</span></button>`;
   if(_filterOpen){
-    h+='<div class="card" style="padding:14px 16px;margin-bottom:14px">';
+    h+='<div class="filterpop">';
     h+=`<div class="fgroup"><div class="fl">팀</div>${TEAMS_ALL.map(t=>`<button class="chip ${FILTER.teams.has(t)?'on':''}" onclick="tf('teams','${t}')">${escH(t)}</button>`).join('')}</div>`;
     h+=`<div class="fgroup"><div class="fl">상태</div>${stats.map(s=>`<button class="chip ${FILTER.statuses.has(s)?'on':''}" onclick="tf('statuses','${s}')">${sm[s][0]}</button>`).join('')}</div>`;
-    if(kind==='payout')h+=`<div class="fgroup"><div class="fl">기타</div><button class="chip ${FILTER.anomaly?'on':''}" onclick="FILTER.anomaly=!FILTER.anomaly;render()">⚠️ 이상거래만</button><button class="chip ${FILTER.big?'on':''}" onclick="FILTER.big=!FILTER.big;render()">🔺 1천만+ (고액 이체건)</button></div>`;
+    if(kind==='payout')h+=`<div class="fgroup"><div class="fl">기타</div><button class="chip ${FILTER.anomaly?'on':''}" onclick="FILTER.anomaly=!FILTER.anomaly;render()">⚠️ 이상거래만</button><button class="chip ${FILTER.big?'on':''}" onclick="FILTER.big=!FILTER.big;render()">🔺 1천만+ (고액)</button></div>`;
+    h+=`<div class="filtpop-foot">${cnt?`<button class="btn btn-sm btn-secondary" onclick="clearFilter();render()">초기화</button>`:'<span></span>'}<button class="btn btn-sm btn-primary" onclick="_filterOpen=false;render()">적용</button></div>`;
     h+='</div>';
   }
+  h+=`</div>`;
+  h+=`<div class="sortctl"><span class="sl">정렬</span><select onchange="_sort['${kind}'].k=this.value;render()">${SORTS[kind].map(o=>`<option value="${o[0]}" ${_sort[kind].k===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select><button class="btn btn-sm btn-secondary" title="정렬 방향 전환" onclick="_sort['${kind}'].dir*=-1;render()">${_sort[kind].dir<0?'▼':'▲'}</button></div>`;
+  h+=`<div class="search">${I.search}<input placeholder="검색(거래처·금액·적요)" value="${escH(_q)}" oninput="onSearchInput(this)" oncompositionstart="onSearchCompStart()" oncompositionend="onSearchCompEnd(this)"></div></div>`;
+  if(_filterOpen)h+=`<div class="filt-backdrop" onclick="_filterOpen=false;render()"></div>`;
   return h;
 }
 /* ===================== 라우터 ===================== */
@@ -438,14 +464,16 @@ const PAGES={
 };
 const NAV=[['dashboard','대시보드','m_dash'],['payout','이체 요청','m_money'],['invoice','세금계산서 발행','m_doc'],['anomaly','이상거래 검토','m_alert'],['vendors','거래처 관리','m_vendor']];
 function buildNav(){
-  let h='<div class="nav-label">재무 업무</div>';
+  let h='<div class="nav-label">재무 업무</div>';let mh='';
   NAV.forEach(([k,label,ic])=>{
     if((k==='vendors'||k==='anomaly')&&!canViewAll())return;
     let dot='';
     if(canApprove()&&(k==='payout'||k==='invoice')){const arr=k==='payout'?DB.payout:DB.invoice;const c=arr.filter(r=>r.status==='requested').length;if(c)dot=`<span class="dot">${c}</span>`;}
     h+=`<div class="nav-item${current===k?' active':''}" onclick="go('${k}')">${I[ic]}<span>${label}</span>${dot}</div>`;
+    mh+=`<button class="mnav-item${current===k?' active':''}" onclick="go('${k}')">${I[ic]}<span>${escH(label.split(' ')[0])}</span>${dot}</button>`;
   });
   document.getElementById('nav').innerHTML=h;
+  const _mn=document.getElementById('mnav');if(_mn)_mn.innerHTML=mh;
 }
 function go(k){current=k;_sel=new Set();_q='';_filterOpen=false;clearFilter();render();}
 function landing(page,opts){clearFilter();opts=opts||{};if(opts.team)FILTER.teams.add(opts.team);if(opts.status)FILTER.statuses.add(opts.status);if(opts.big)FILTER.big=true;if(opts.anomaly)FILTER.anomaly=true;if(opts.payee)_q=opts.payee;current=page;_sel=new Set();_filterOpen=true;render();}
@@ -526,25 +554,25 @@ function renderPayout(){
   h+=payoutSumBar(list);
   if(mineApprove&&_sel.size){const ss=list.filter(r=>_sel.has(r.id));h+=`<div class="batchbar"><span class="sel">${_sel.size}건 선택 · ${won(ss.filter(r=>r.unit==='원').reduce((s,r)=>s+r.amount,0))}원</span><button class="btn btn-sm btn-line" onclick="batchPayout('paid')">${I.check}<span>지급완료 표시</span></button><button class="btn btn-sm btn-primary" onclick="exportPayout()">${I.download}<span>은행 이체 엑셀</span></button><button class="btn btn-sm btn-secondary" onclick="_sel=new Set();render()">해제</button></div>`;}
   if(!list.length){h+=`<div class="card"><div class="empty">${I.empty}<div>표시할 이체 요청이 없습니다.</div></div></div>`;c.innerHTML=h;return;}
-  h+='<div class="card"><div class="table-wrap"><table style="--cw:'+colwVar('payout')+'"><thead><tr>';
-  if(mineApprove)h+=`<th style="width:36px"><input type="checkbox" class="cbx" ${list.every(r=>_sel.has(r.id))?'checked':''} onclick="toggleAll('payout')"></th>`;
-  h+=`<th class="rz sortable" onclick="setSort('payout','name')">거래처 · 적요${sortIcon('payout','name')}<span class="rzh" data-rz="payout" onclick="event.stopPropagation()"></span></th><th>팀</th><th>신청인</th><th>분류</th><th class="sortable" onclick="setSort('payout','date')">요청일${sortIcon('payout','date')}</th><th>은행·계좌</th><th class="sortable" style="text-align:right" onclick="setSort('payout','amount')">금액${sortIcon('payout','amount')}</th><th>이상·고액</th><th>상태</th><th></th></tr></thead><tbody>`;
+  h+='<div class="card"><div class="table-wrap"><table class="cardtbl" style="--cw:'+colwVar('payout')+'"><thead><tr>';
+  if(mineApprove)h+=`<th class="mhide" style="width:36px"><input type="checkbox" class="cbx" ${list.every(r=>_sel.has(r.id))?'checked':''} onclick="toggleAll('payout')"></th>`;
+  h+=`<th class="rz sortable" onclick="setSort('payout','name')">거래처 · 적요${sortIcon('payout','name')}<span class="rzh" data-rz="payout" onclick="event.stopPropagation()"></span></th><th class="mhide">팀</th><th class="mhide">신청인</th><th class="mhide">분류</th><th class="sortable mhide" onclick="setSort('payout','date')">요청일${sortIcon('payout','date')}</th><th class="mhide">은행·계좌</th><th class="sortable" style="text-align:right" onclick="setSort('payout','amount')">금액${sortIcon('payout','amount')}</th><th class="mhide">이상·고액</th><th>상태</th><th></th></tr></thead><tbody>`;
   list.forEach(r=>{
     const st=PSTATUS[r.status]||['?',''];const flags=r.status==='requested'?scanPayout(r):[];
-    h+='<tr>';
-    if(mineApprove)h+=`<td><input type="checkbox" class="cbx" ${_sel.has(r.id)?'checked':''} onclick="toggleSel('${r.id}')"></td>`;
+    h+=`<tr class="rowclk" onclick="viewPayout('${r.id}')">`;
+    if(mineApprove)h+=`<td class="mhide"><input type="checkbox" class="cbx" ${_sel.has(r.id)?'checked':''} onclick="event.stopPropagation();toggleSel('${r.id}')"></td>`;
     h+=`<td class="rzc"><div class="t-name">${escH(r.payee)} ${r.category==='유류비'?'<span class="tag tag-fuel">유류비</span>':''}</div><div class="t-sub">${escH(r.purpose||'-')}</div></td>`;
-    h+=`<td>${escH(normalizeTeam(r.team)||'-')}</td><td>${r.requester?escH(r.requester):'<span class="t-sub">-</span>'}</td>`;
-    h+=`<td><span class="tag tag-gray">${escH(r.category||'-')}</span></td>`;
-    h+=`<td class="t-sub num" style="white-space:nowrap">${escH(r.applied||'-')}</td>`;
-    h+=`<td>${escH(r.bank||'-')}<div class="t-sub num">${escH(r.account||'')}</div></td>`;
+    h+=`<td class="mhide">${escH(normalizeTeam(r.team)||'-')}</td><td class="mhide">${r.requester?escH(r.requester):'<span class="t-sub">-</span>'}</td>`;
+    h+=`<td class="mhide"><span class="tag tag-gray">${escH(r.category||'-')}</span></td>`;
+    h+=`<td class="t-sub num mhide" style="white-space:nowrap">${escH(r.applied||'-')}</td>`;
+    h+=`<td class="mhide">${escH(r.bank||'-')}<div class="t-sub num">${escH(r.account||'')}</div></td>`;
     h+=`<td style="text-align:right"><span class="amt">${won(r.amount)}</span>${r.unit!=='원'?' <span class="t-sub">'+r.unit+'</span>':''}</td>`;
-    h+=`<td style="max-width:175px;white-space:normal">${flags.length?`<span class="flagwrap" onclick="anomalyDetail('${r.id}')" title="클릭하면 감지 근거 보기">${flags.map(flagHtml).join('')}</span>`:''}${isBig(r)?(flags.length?' ':'')+'<span class="tag tag-blue">🔺 고액</span>':(flags.length?'':'<span class="t-sub">–</span>')}</td>`;
+    h+=`<td class="mhide" style="max-width:175px;white-space:normal">${flags.length?`<span class="flagwrap" onclick="event.stopPropagation();anomalyDetail('${r.id}')" title="클릭하면 감지 근거 보기">${flags.map(flagHtml).join('')}</span>`:''}${isBig(r)?(flags.length?' ':'')+'<span class="tag tag-blue">🔺 고액</span>':(flags.length?'':'<span class="t-sub">–</span>')}</td>`;
     h+=`<td><span class="badge ${st[1]}">${st[0]}</span></td>`;
     h+='<td><div class="rowact">';
-    h+=`<button class="iconbtn" title="상세" onclick="viewPayout('${r.id}')">${I.eye}</button>`;
-    h+=`<button class="iconbtn" title="복제" onclick="clonePayout('${r.id}')">${I.copy}</button>`;
-    if(!canViewAll()&&r.requester===ME().name&&r.status==='requested')h+=`<button class="iconbtn" title="철회" onclick="cancelPayout('${r.id}')">${I.trash}</button>`;
+    h+=`<button class="iconbtn" title="은행 이체 엑셀" onclick="event.stopPropagation();exportPayoutOne('${r.id}')">${I.download}</button>`;
+    h+=`<button class="iconbtn" title="복제" onclick="event.stopPropagation();clonePayout('${r.id}')">${I.copy}</button>`;
+    if(!canViewAll()&&r.requester===ME().name&&r.status==='requested')h+=`<button class="iconbtn" title="철회" onclick="event.stopPropagation();cancelPayout('${r.id}')">${I.trash}</button>`;
     h+='</div></td></tr>';
   });
   h+='</tbody></table></div></div>';
@@ -612,8 +640,8 @@ function clonePayout(id){const r=DB.payout.find(x=>x.id===id);if(!r)return;openP
 function cancelPayout(id){confirmModal('이체 요청 철회','이 요청을 철회할까요?',()=>{sv('fin_cancel_payout',{p_id:id},()=>{const r=DB.payout.find(x=>x.id===id);if(r)r.status='canceled';}).then(()=>{render();toast('철회했어요.');});});}
 function viewPayout(id){
   const r=DB.payout.find(x=>x.id===id);if(!r)return;const st=PSTATUS[r.status];const flags=r.status==='requested'?scanPayout(r):[];
-  let foot='<button class="btn btn-secondary" onclick="closeModal()">닫기</button>';
-  if(canApprove()&&r.status==='requested')foot=`<button class="btn btn-danger" onclick="decidePayout('${id}','rejected')">반려</button><button class="btn btn-primary" onclick="decidePayout('${id}','paid')">지급완료</button>`;
+  let foot=`<button class="btn btn-line btn-sm" onclick="exportPayoutOne('${id}')">${I.download}<span>은행 엑셀</span></button><button class="btn btn-line btn-sm" onclick="closeModal();clonePayout('${id}')">${I.copy}<span>복제</span></button><button class="btn btn-secondary" onclick="closeModal()">닫기</button>`;
+  if(canApprove()&&r.status==='requested')foot=`<button class="btn btn-line btn-sm" onclick="exportPayoutOne('${id}')">${I.download}<span>은행 엑셀</span></button><button class="btn btn-danger" onclick="decidePayout('${id}','rejected')">반려</button><button class="btn btn-primary" onclick="decidePayout('${id}','paid')">지급완료</button>`;
   const fuel=r.fuel?`<div class="hr"></div><div style="font-weight:700;font-size:13px;margin-bottom:8px">🚗 유류비/출장 정보</div><div class="dl"><dt>경로</dt><dd>${escH(r.fuel.from)} → ${escH(r.fuel.to)} ${r.fuel.roundTrip?'(왕복)':''}</dd><dt>목적</dt><dd>${escH(r.fuel.visit||'')}</dd><dt>거리</dt><dd>${escH(r.fuel.km||'-')} km</dd><dt>차량</dt><dd>${escH(r.fuel.carNo||'-')}</dd></div>`:'';
   const wh=r.wh?`<div class="hr"></div><div style="font-weight:700;font-size:13px;margin-bottom:8px">🧾 원천징수</div><div class="dl"><dt>지급총액</dt><dd>${won(r.wh.gross)}원</dd><dt>원천징수</dt><dd>${won(r.wh.tax)}원 (${escH(r.wh.type)})</dd><dt>실지급액</dt><dd><b>${won(r.wh.net)}원</b></dd></div>`:'';
   const ev=r.evidence?`<div class="hr"></div><div class="dl"><dt>증빙</dt><dd><a href="${escH(r.evidence)}" target="_blank" rel="noopener" style="color:var(--billy-blue);text-decoration:underline">Dropbox 링크 ↗</a></dd></div>`:'';
@@ -696,19 +724,19 @@ function renderInvoice(){
   h+=invoiceSumBar(list);
   if(mineApprove&&_sel.size)h+=`<div class="batchbar"><span class="sel">${_sel.size}건 선택</span><button class="btn btn-sm btn-line" onclick="batchInvoice('issued')">${I.check}<span>발행완료 표시</span></button><button class="btn btn-sm btn-primary" onclick="exportInvoice()">${I.download}<span>홈택스 발행 엑셀</span></button><button class="btn btn-sm btn-secondary" onclick="_sel=new Set();render()">해제</button></div>`;
   if(!list.length){h+=`<div class="card"><div class="empty">${I.empty}<div>표시할 발행 요청이 없습니다.</div></div></div>`;c.innerHTML=h;return;}
-  h+='<div class="card"><div class="table-wrap"><table style="--cw:'+colwVar('invoice')+'"><thead><tr>';
+  h+='<div class="card"><div class="table-wrap"><table class="cardtbl" style="--cw:'+colwVar('invoice')+'"><thead><tr>';
   if(mineApprove)h+=`<th style="width:36px"><input type="checkbox" class="cbx" ${list.every(r=>_sel.has(r.id))?'checked':''} onclick="toggleAll('invoice')"></th>`;
-  h+=`<th class="rz sortable" onclick="setSort('invoice','name')">공급받는자${sortIcon('invoice','name')}<span class="rzh" data-rz="invoice" onclick="event.stopPropagation()"></span></th><th>구분</th><th>품목/작성일</th><th class="sortable" style="text-align:right" onclick="setSort('invoice','amount')">합계${sortIcon('invoice','amount')}</th><th>기한</th><th>상태</th><th></th></tr></thead><tbody>`;
+  h+=`<th class="rz sortable" onclick="setSort('invoice','name')">공급받는자${sortIcon('invoice','name')}<span class="rzh" data-rz="invoice" onclick="event.stopPropagation()"></span></th><th class="mhide">구분</th><th>품목/작성일</th><th class="sortable" style="text-align:right" onclick="setSort('invoice','amount')">합계${sortIcon('invoice','amount')}</th><th class="mhide">기한</th><th>상태</th><th></th></tr></thead><tbody>`;
   list.forEach(r=>{const st=ISTATUS[r.status];
-    h+='<tr>';
-    if(mineApprove)h+=`<td><input type="checkbox" class="cbx" ${_sel.has(r.id)?'checked':''} onclick="toggleSel('${r.id}')"></td>`;
+    h+=`<tr class="rowclk" onclick="viewInvoice('${r.id}')">`;
+    if(mineApprove)h+=`<td class="mhide"><input type="checkbox" class="cbx" ${_sel.has(r.id)?'checked':''} onclick="event.stopPropagation();toggleSel('${r.id}')"></td>`;
     h+=`<td class="rzc"><div class="t-name">${escH(r.company)}</div><div class="t-sub num">${escH(r.bizNo)}</div></td>`;
-    h+=`<td><span class="tag tag-gray">${escH(r.saleType||'매출')}</span></td>`;
+    h+=`<td class="mhide"><span class="tag tag-gray">${escH(r.saleType||'매출')}</span></td>`;
     h+=`<td><div class="ellip">${escH(r.itemName)}</div><div class="t-sub num">${escH(r.writeDate)}</div></td>`;
     h+=`<td style="text-align:right"><span class="amt">${won(r.total)}</span><div class="t-sub num">VAT ${won(r.tax)}</div></td>`;
-    h+=`<td>${deadlineBadge(r.writeDate)||'<span class="t-sub">–</span>'}</td>`;
+    h+=`<td class="mhide">${deadlineBadge(r.writeDate)||'<span class="t-sub">–</span>'}</td>`;
     h+=`<td><span class="badge ${st[1]}">${st[0]}</span></td>`;
-    h+=`<td><div class="rowact"><button class="iconbtn" title="상세" onclick="viewInvoice('${r.id}')">${I.eye}</button><button class="iconbtn" title="복제" onclick="cloneInvoice('${r.id}')">${I.copy}</button></div></td></tr>`;
+    h+=`<td><div class="rowact"><button class="iconbtn" title="홈택스 발행 엑셀" onclick="event.stopPropagation();exportInvoiceOne('${r.id}')">${I.download}</button><button class="iconbtn" title="복제" onclick="event.stopPropagation();cloneInvoice('${r.id}')">${I.copy}</button></div></td></tr>`;
   });
   h+='</tbody></table></div></div>';
   c.innerHTML=h;
@@ -741,8 +769,8 @@ function submitInvoice(){const supply=numVal('i_supply');const r={id:uid('v'),re
 }
 function cloneInvoice(id){const r=DB.invoice.find(x=>x.id===id);if(!r)return;openInvoiceForm({company:r.company,bizNo:r.bizNo,ceo:r.ceo,email:r.email,saleType:r.saleType,writeDate:today(),itemName:r.itemName,supply:r.supply});toast('복제했어요. 작성일 확인하세요.','ok');}
 function viewInvoice(id){const r=DB.invoice.find(x=>x.id===id);if(!r)return;const st=ISTATUS[r.status];
-  let foot='<button class="btn btn-secondary" onclick="closeModal()">닫기</button>';
-  if(canApprove()&&r.status==='requested')foot=`<button class="btn btn-danger" onclick="decideInvoice('${id}','rejected')">반려</button><button class="btn btn-primary" onclick="decideInvoice('${id}','issued')">발행완료</button>`;
+  let foot=`<button class="btn btn-line btn-sm" onclick="exportInvoiceOne('${id}')">${I.download}<span>홈택스 엑셀</span></button><button class="btn btn-line btn-sm" onclick="closeModal();cloneInvoice('${id}')">${I.copy}<span>복제</span></button><button class="btn btn-secondary" onclick="closeModal()">닫기</button>`;
+  if(canApprove()&&r.status==='requested')foot=`<button class="btn btn-line btn-sm" onclick="exportInvoiceOne('${id}')">${I.download}<span>홈택스 엑셀</span></button><button class="btn btn-danger" onclick="decideInvoice('${id}','rejected')">반려</button><button class="btn btn-primary" onclick="decideInvoice('${id}','issued')">발행완료</button>`;
   modal('세금계산서 발행 요청 상세','',`<div style="margin-bottom:10px">${deadlineBadge(r.writeDate)}</div><div class="dl"><dt>상태</dt><dd><span class="badge ${st[1]}">${st[0]}</span></dd><dt>구분</dt><dd>${escH(r.saleType||'매출')}</dd><dt>상호</dt><dd>${escH(r.company)} (${escH(r.ceo)})</dd><dt>사업자번호</dt><dd class="num">${escH(r.bizNo)}</dd><dt>이메일</dt><dd>${escH(r.email)}</dd><dt>품목</dt><dd>${escH(r.itemName)}</dd><dt>작성일자</dt><dd>${escH(r.writeDate)}</dd><dt>공급가액</dt><dd>${won(r.supply)}원</dd><dt>세액</dt><dd>${won(r.tax)}원</dd><dt>합계</dt><dd><b>${won(r.total)}원</b></dd><dt>신청인</dt><dd>${escH(r.requester||'-')}</dd><dt>팀</dt><dd>${escH(normalizeTeam(r.team)||'-')}</dd>${r.evidence?`<dt>증빙</dt><dd><a href="${escH(r.evidence)}" target="_blank" rel="noopener" style="color:var(--billy-blue);text-decoration:underline">Dropbox 링크 ↗</a></dd>`:''}</div>`,foot);
 }
 function decideInvoice(id,status){sv('fin_decide_invoice',{p_id:id,p_status:status,p_reason:''},()=>{const r=DB.invoice.find(x=>x.id===id);if(r){r.status=status;if(status==='issued')r.issuedAt=today();}}).then(()=>{closeModal();render();toast(status==='issued'?'발행완료로 표시했어요.':'반려했어요.',status==='rejected'?'err':'ok');});}
@@ -750,6 +778,9 @@ function batchInvoice(status){const ss=DB.invoice.filter(r=>_sel.has(r.id)&&r.st
 function exportInvoiceRows(ss,fname){loadXLSX().then(function(){const head=['작성일자','공급받는자 사업자등록번호','상호','대표자','이메일','품목명','공급가액','세액','합계금액','구분'];const data=ss.map(r=>[r.writeDate,r.bizNo,r.company,r.ceo,r.email,r.itemName,r.supply,r.tax,r.total,r.saleType]);const ws=XLSX.utils.aoa_to_sheet([head].concat(data));ws['!cols']=[{wch:11},{wch:16},{wch:18},{wch:9},{wch:22},{wch:22},{wch:12},{wch:11},{wch:12},{wch:7}];const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'세금계산서');XLSX.writeFile(wb,fname);toast(ss.length+'건 엑셀 다운로드.','ok');}).catch(()=>toast('엑셀 로드 실패','err'));}
 function exportInvoice(){const ss=DB.invoice.filter(r=>_sel.has(r.id));if(!ss.length){toast('항목을 선택하세요.','err');return;}exportInvoiceRows(ss,'세금계산서_선택_'+today()+'.xlsx');}
 function exportInvoiceList(){const ss=applySort(visible(DB.invoice,'invoice'),'invoice');if(!ss.length){toast('내보낼 항목이 없어요.','err');return;}exportInvoiceRows(ss,'세금계산서발행_'+today()+'.xlsx');}
+function _fn(s){return String(s||'').replace(/[\\/:*?"<>|]/g,'').slice(0,20);}
+function exportPayoutOne(id){const r=DB.payout.find(x=>x.id===id);if(!r){toast('항목을 찾을 수 없어요.','err');return;}exportPayoutRows([r],'이체_'+_fn(r.payee)+'_'+today()+'.xlsx');}
+function exportInvoiceOne(id){const r=DB.invoice.find(x=>x.id===id);if(!r){toast('항목을 찾을 수 없어요.','err');return;}exportInvoiceRows([r],'세금계산서_'+_fn(r.company)+'_'+today()+'.xlsx');}
 /* ===================== 거래처 관리 ===================== */
 function renderVendors(){
   const c=document.getElementById('content');let list=VENDORS.slice();
