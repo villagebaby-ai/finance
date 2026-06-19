@@ -91,6 +91,7 @@ tbody tr:hover{background:var(--billy-blue-50)}
 tbody tr:last-child td{border-bottom:none}
 .t-name{font-weight:700;white-space:nowrap}
 .t-sub{color:var(--gray);font-size:12px}
+.nmcell{word-break:keep-all}
 th.rz{position:relative;width:var(--cw,300px);min-width:120px}.rzh{position:absolute;top:16%;right:-3px;width:8px;height:68%;cursor:col-resize;z-index:3;border-right:2px solid var(--gray-200)}.rzh:hover,.rzh.drag{border-right-color:var(--billy-blue)}td.rzc>div{max-width:var(--cw,300px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}td.rzc>.t-name{white-space:normal;text-overflow:clip;line-height:1.35}
 .period-bar{margin-bottom:12px}.sortctl{display:inline-flex;align-items:center;gap:6px}.sortctl .sl{font-size:12px;color:var(--gray);font-weight:600}.filters select{height:34px;border:1px solid var(--gray-200);border-radius:9px;padding:0 8px;font-size:12.5px;background:#fff;color:var(--gray-800);cursor:pointer}.seg-range{display:flex;align-items:center;gap:8px;margin:9px 0 2px;font-size:13px;color:var(--gray-700)}.seg-range input{height:34px;padding:0 10px;border:1px solid var(--gray-200);border-radius:9px;font-size:13px}
 .sumbar{display:flex;align-items:center;gap:18px;flex-wrap:wrap;background:var(--billy-blue-50);border:1px solid var(--billy-blue-100);border-radius:12px;padding:10px 16px;margin-bottom:14px;font-size:13px;color:var(--gray-800)}.sumbar .sb-seg span{color:var(--gray)}.sumbar b{font-weight:800}.sumbar .sb-x{margin-left:auto}
@@ -273,6 +274,7 @@ const I={
   m_doc:'<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg>',
   m_vendor:'<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-3"/><path d="M9 9v.01M9 12v.01M9 15v.01"/></svg>',
   m_alert:'<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>',
+  m_proof:'<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path d="M6 2h9l5 5v15l-2.5-1.5L15 22l-2.5-1.5L10 22l-2.5-1.5L5 22V4a2 2 0 0 1 1-2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>',
 };
 /* ---------- 헬퍼 ---------- */
 function escH(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -285,6 +287,9 @@ function comma(s){return String(s||'').replace(/[^0-9]/g,'').replace(/\B(?=(\d{3
 function val(id){const el=document.getElementById(id);return el?el.value.trim():'';}
 function numVal(id){return Number(String(val(id)).replace(/[^0-9]/g,''))||0;}
 function digits(s){return String(s||'').replace(/[^0-9]/g,'');}
+/* 사람 이름이 좁은 칸에서 줄바꿈될 때 성 단위로만 끊기게(홍/찬주). .nmcell(word-break:keep-all)과 함께 사용. */
+const _SUR2=['남궁','선우','독고','황보','제갈','사공','서문','동방','어금','망절','등정'];
+function nameWrap(s){s=String(s||'');if(!/^[가-힣]{2,5}$/.test(s))return escH(s);var cut=_SUR2.indexOf(s.slice(0,2))>=0?2:1;return escH(s.slice(0,cut))+'<wbr>'+escH(s.slice(cut));}
 const BANKS=['국민','신한','우리','하나','기업','농협','SC제일','카카오뱅크','토스뱅크','케이뱅크','새마을금고','우체국','부산','경남','대구','산업','씨티'];
 const CATEGORIES=['외주·용역비','물품대금','광고·마케팅비','유류비','환불','임대료','복리후생','경비정산','구독료','기타'];
 const CURRENCIES=['원','USD','JPY','EUR'];
@@ -307,13 +312,21 @@ let ROLE='finance';
 const ME=()=>(IS_SUPA&&SUPA_USER)?SUPA_USER:ROLE_DEF[ROLE];
 const canViewAll=()=>['viewer','finance','exec'].includes(ROLE);
 const canApprove=()=>ROLE==='finance'; // 처리(지급완료/반려)는 데모 재무만
+const canVendorAdmin=()=>['finance','exec'].includes(ROLE); // 신규 거래처 승인·등록 = 데모 재무·데모 대표
 const THRESHOLD_NOTIFY=THRESHOLD; // 1천만+ → 데모 대표 대표 메일 통지(승인 아님)
 const isBig=r=>!!(r&&r.unit==='원'&&(Number(r.amount)||0)>=THRESHOLD);
 const TEAMS_ALL=['Brand','Product','Commerce','M&E','Biz','GA'];
+/* 적격증빙 — 미수취 시 증빙불비 가산세(2%). 이체요청 시 필수 기재. */
+const PROOF_TYPES=[['세금계산서','세금계산서 (매입)'],['현금영수증','현금영수증 (지출증빙)'],['계산서','계산서 (면세)'],['카드전표','신용카드 전표'],['명세서','거래명세서·영수증'],['none','증빙 없음']];
+const PROOF_ADEQ=new Set(['세금계산서','현금영수증','계산서']); // 홈택스 확인 대상 → 받을예정/수취완료 추적
+const PROOF_LABEL={'세금계산서':'세금계산서 (매입)','현금영수증':'현금영수증 (지출증빙)','계산서':'계산서 (면세)','카드전표':'신용카드 전표','명세서':'거래명세서·영수증','none':'증빙 없음'};
+function needsProof(r){return !!(r&&PROOF_ADEQ.has(r.proofType)&&r.proofStatus!=='수취완료'&&r.status!=='canceled'&&r.status!=='rejected');}
+function proofDeadline(d){if(!d)return null;const x=new Date(d);return new Date(x.getFullYear(),x.getMonth()+1,10);} // 작성일 기준 익월 10일
+function proofOverdue(r){if(!needsProof(r))return false;const dl=proofDeadline(r.proofDate);return !!dl&&new Date(today())>dl;}
 function approverFor(requester,amount){const big=(Number(amount)||0)>=THRESHOLD;if(requester==='데모 재무'||big)return requester==='데모 대표'?'데모 재무':'데모 대표';return '데모 재무';}
 /* ===================== 거래처(데모) ===================== */
 const VENDORS=[
-  {id:'v1',name:'(주)폴레드패밀리',bizNo:'2478601655',team:'M&E',email:'tax@poled.demo',accounts:[{bank:'기업',account:'420-097688-04-023',holder:'(주)폴레드패밀리',primary:true},{bank:'기업',account:'523-062129-01-017',holder:'(주)폴레드패밀리'}],cnt:30,avg:1200000,max:7000000,lastDate:addDays(-9),unit:'원'},
+  {id:'v1',name:'(주)폴레드패밀리',bizNo:'2478601655',team:'M&E',email:'tax@poled.demo',accounts:[{bank:'기업',account:'420-097688-04-023',holder:'(주)폴레드패밀리',primary:true},{bank:'기업',account:'523-062129-01-017',holder:'(주)폴레드패밀리'}],cnt:30,avg:1200000,max:7000000,lastDate:addDays(-9),unit:'원',bankbookUrl:'https://www.dropbox.com/scl/demo/poled-bankbook.pdf',bizregUrl:'https://www.dropbox.com/scl/demo/poled-bizreg.pdf'},
   {id:'v2',name:'블루박스물류',team:'Commerce',email:'',accounts:[{bank:'우리',account:'1002-345-678901',holder:'블루박스물류',primary:true}],cnt:8,avg:520000,max:900000,lastDate:addDays(-13),unit:'원'},
   {id:'v3',name:'(주)제이디상사',bizNo:'8361400876',team:'Brand',email:'jd@thejd.demo',accounts:[{bank:'국민',account:'01234-56-789012',holder:'(주)제이디상사',primary:true},{bank:'신한',account:'110-222-333444',holder:'(주)제이디상사'}],cnt:24,avg:2200000,max:5000000,lastDate:addDays(-5),unit:'원'},
   {id:'v4',name:'(주)에이원베이비',bizNo:'2018618451',team:'Commerce',email:'shlee@aone.demo',accounts:[{bank:'우리',account:'1005-501-763342',holder:'(주)에이원베이비',primary:true}],cnt:35,avg:380000,max:1060000,lastDate:addDays(-7),unit:'원'},
@@ -328,19 +341,19 @@ function findVendor(name){const k=String(name||'').replace(/\(주\)|주식회사
 const DB={payout:[],invoice:[]};
 (function seed(){
   const P=(o)=>{o.id=uid('p');o.applied=o.applied||today();o.approver=approverFor(o.requester,o.amount);DB.payout.push(o);};
-  P({requester:'데모 직원1',team:'M&E',payee:'(주)폴레드패밀리',bank:'기업',account:'420-097688-04-023',amount:1100000,unit:'원',category:'광고·마케팅비',purpose:'폴레드 라이브 광고비',status:'requested',hasTax:true,applied:addDays(-1)});
+  P({requester:'데모 직원1',team:'M&E',payee:'(주)폴레드패밀리',bank:'기업',account:'420-097688-04-023',amount:1100000,unit:'원',category:'광고·마케팅비',purpose:'폴레드 라이브 광고비',proofType:'세금계산서',proofDate:addDays(-1),proofStatus:'받을예정',status:'requested',hasTax:true,applied:addDays(-1)});
   P({requester:'데모 직원1',team:'M&E',payee:'(주)폴레드패밀리',bank:'기업',account:'761-052119-01-555',amount:1100000,unit:'원',category:'광고·마케팅비',purpose:'폴레드 라이브 광고비(계좌 변경됨)',status:'requested',hasTax:true,applied:today()});
   P({requester:'데모 직원3',team:'Brand',payee:'뉴비전마케팅',bank:'국민',account:'987-65-432100',amount:2000000,unit:'원',category:'광고·마케팅비',purpose:'신규 0원 이벤트 제휴비',status:'requested',hasTax:false,applied:today()});
-  P({requester:'데모 직원2',team:'M&E',payee:'블루박스물류',bank:'우리',account:'1002-345-678901',amount:4800000,unit:'원',category:'물품대금',purpose:'택배 박스 대량 발주',status:'requested',hasTax:true,applied:today()});
+  P({requester:'데모 직원2',team:'M&E',payee:'블루박스물류',bank:'우리',account:'1002-345-678901',amount:4800000,unit:'원',category:'물품대금',purpose:'택배 박스 대량 발주',proofType:'세금계산서',proofDate:today(),proofStatus:'받을예정',status:'requested',hasTax:true,applied:today()});
   P({requester:'데모 팀장C',team:'Commerce',payee:'(주)에이원베이비',bank:'우리',account:'1005-501-763342',amount:550000,unit:'원',category:'외주·용역비',purpose:'라이브방송 수수료 정산',status:'requested',hasTax:true,applied:addDays(-1)});
   P({requester:'데모 재무',team:'Biz',payee:'카라멜파트너스',bank:'신한',account:'100-031-221388',amount:165000000,unit:'원',category:'광고·마케팅비',purpose:'마케팅비(월정산)',status:'requested',hasTax:true,applied:today()});
   P({requester:'데모 팀장P',team:'Product',payee:'타불라코리아',bank:'외화',account:'123-082001-01-016',amount:1200,unit:'USD',category:'광고·마케팅비',purpose:'타불라 광고비(외화)',status:'requested',hasTax:true,applied:today()});
   P({requester:'데모 직원1',team:'M&E',payee:'데모 직원1',bank:'국민',account:'012-3456-7890',amount:48000,unit:'원',category:'유류비',purpose:'거래처 미팅 출장',status:'requested',hasTax:false,applied:today(),fuel:{from:'사무실(역삼)',to:'코엑스',roundTrip:true,km:24,carNo:'12가3456',visit:'베이비페어 미팅'}});
-  P({requester:'데모 직원2',team:'M&E',payee:'그린오피스임대',bank:'우리',account:'1005-203-509991',amount:2200000,unit:'원',category:'임대료',purpose:'7월 사무실 임대료',status:'paid',paidAt:addDays(-1),hasTax:true,applied:addDays(-4)});
-  P({requester:'데모 직원4',team:'Brand',payee:'(주)제이디상사',bank:'국민',account:'01234-56-789012',amount:1500000,unit:'원',category:'물품대금',purpose:'베이비페어 제품 매입',status:'paid',paidAt:addDays(-2),hasTax:true,applied:addDays(-5)});
+  P({requester:'데모 직원2',team:'M&E',payee:'그린오피스임대',bank:'우리',account:'1005-203-509991',amount:2200000,unit:'원',category:'임대료',purpose:'7월 사무실 임대료',proofType:'세금계산서',proofDate:addDays(-4),proofStatus:'수취완료',proofReceivedAt:addDays(-2),status:'paid',paidAt:addDays(-1),hasTax:true,applied:addDays(-4)});
+  P({requester:'데모 직원4',team:'Brand',payee:'(주)제이디상사',bank:'국민',account:'01234-56-789012',amount:1500000,unit:'원',category:'물품대금',purpose:'베이비페어 제품 매입',proofType:'세금계산서',proofDate:addDays(-5),proofStatus:'받을예정',status:'paid',paidAt:addDays(-2),hasTax:true,applied:addDays(-5)});
   // 지난달/지지난달(기간 필터 시연용)
-  P({requester:'데모 직원1',team:'M&E',payee:'(주)폴레드패밀리',bank:'기업',account:'420-097688-04-023',amount:1000000,unit:'원',category:'광고·마케팅비',purpose:'5월 광고비',status:'paid',paidAt:addDays(-40),hasTax:true,applied:addDays(-42)});
-  P({requester:'데모 팀장C',team:'Commerce',payee:'(주)에이원베이비',bank:'우리',account:'1005-501-763342',amount:711650,unit:'원',category:'외주·용역비',purpose:'5월 라이브 수수료',status:'paid',paidAt:addDays(-45),hasTax:true,applied:addDays(-46)});
+  P({requester:'데모 직원1',team:'M&E',payee:'(주)폴레드패밀리',bank:'기업',account:'420-097688-04-023',amount:1000000,unit:'원',category:'광고·마케팅비',purpose:'5월 광고비',proofType:'세금계산서',proofDate:addDays(-42),proofStatus:'받을예정',status:'paid',paidAt:addDays(-40),hasTax:true,applied:addDays(-42)});
+  P({requester:'데모 팀장C',team:'Commerce',payee:'(주)에이원베이비',bank:'우리',account:'1005-501-763342',amount:711650,unit:'원',category:'외주·용역비',purpose:'5월 라이브 수수료',proofType:'현금영수증',proofDate:addDays(-46),proofStatus:'받을예정',status:'paid',paidAt:addDays(-45),hasTax:true,applied:addDays(-46)});
   P({requester:'데모 재무',team:'Biz',payee:'카라멜파트너스',bank:'신한',account:'100-031-221388',amount:165000000,unit:'원',category:'광고·마케팅비',purpose:'4월 마케팅비',status:'paid',paidAt:addDays(-70),hasTax:true,applied:addDays(-72)});
   const V=(o)=>{o.id=uid('v');o.applied=o.applied||today();o.tax=Math.round(o.supply*0.1);o.total=o.supply+o.tax;o.approver=approverFor(o.requester,o.total);DB.invoice.push(o);};
   V({requester:'데모 직원1',team:'M&E',saleType:'매출',company:'(주)베스트마트',bizNo:'1208801234',ceo:'김상호',email:'tax@bestmart.demo',writeDate:'2026-05-31',itemName:'유아용품 납품(5월)',supply:3000000,status:'requested'});
@@ -358,7 +371,7 @@ function addMonth(d,n){const p=String(d).split('-');const x=new Date(+p[0],+p[1]
 function scanPayout(r,excludeId){
   const flags=[];const v=findVendor(r.payee);
   if(r.category!=='유류비'){
-    if(!v){flags.push({s:'caution',t:'🆕 첫거래처',d:'과거 이력에 없는 거래처예요. 계좌·사업자 확인 권장.'});}
+    if(!v){flags.push({s:'caution',t:'🆕 첫 거래',d:'과거 이력에 없는 거래처예요. 통장사본·사업자등록증(또는 신분증) 확인 후 등록하세요.'});}
     else{
       const known=v.accounts.map(a=>digits(a.account));
       if(r.account&&!known.includes(digits(r.account))){const pa=v.accounts.find(a=>a.primary)||v.accounts[0];flags.push({s:'warn',t:'🔁 계좌 변경',d:'기존 계좌와 달라요 (대표계좌 '+(pa?pa.bank+' '+pa.account:'-')+'). 변경 확인 필요.'});}
@@ -383,7 +396,7 @@ function anomalyDetail(id){
     if(/중복/.test(f.t)){const dups=DB.payout.filter(x=>x.id!==r.id&&x.status!=='canceled'&&x.status!=='rejected'&&payDup(x)===payDup(r)&&Math.abs(daysBetween(r.applied||today(),x.applied))<=14);b+=`<div class="anom-list">${dups.map(d=>`<div class="anom-row warn"><span>${escH(d.applied||'-')}</span><b>${won(d.amount)}원</b>${stb(d.status)}<span>${escH(d.purpose||'')}</span></div>`).join('')||'<div class="t-sub">매칭 내역 없음</div>'}</div>`;}
     else if(/계좌/.test(f.t)&&v){b+=`<div class="anom-list">${v.accounts.map(a=>`<div class="anom-row"><span>${a.primary?'대표계좌':'등록계좌'}</span><span>${escH(a.bank||'-')}</span><b class="num">${escH(a.account)}</b></div>`).join('')}<div class="anom-row warn"><span>이번 요청</span><span>${escH(r.bank||'-')}</span><b class="num">${escH(r.account||'-')}</b></div></div>`;}
     else if(/급증|급감/.test(f.t)&&v){b+=`<div class="anom-list"><div class="anom-row warn"><span>이번 금액</span><b>${won(r.amount)}원</b></div><div class="anom-row"><span>과거 평균</span><b>${won(v.avg)}원</b></div><div class="anom-row"><span>과거 최대</span><b>${won(v.max)}원</b></div><div class="anom-row"><span>거래 횟수</span><b>${v.cnt}회</b></div></div>`;}
-    else if(/첫거래/.test(f.t)){b+=`<div class="t-sub">과거 이체·세금계산서 이력에서 이 거래처를 찾지 못했어요. 사업자등록증·통장 사본 확인을 권장해요.</div>`;}
+    else if(/첫\s?거래/.test(f.t)){b+=`<div class="t-sub">🆕 <b>첫 거래처네요!</b> 추가 증빙 링크(Dropbox)에 <b>통장사본·사업자등록증 또는 신분증</b>을 넣어주세요. 첫 거래처는 기본 서류 확인 후 이체가 완료됩니다. 확인 뒤 <b>거래처 관리 → 신규 거래처 승인</b>에서 등록할 수 있어요.</div>`;}
     b+='</div>';
   });}
   if(v){const hist=DB.payout.filter(x=>{const fv=findVendor(x.payee);return fv&&fv.id===v.id;}).sort((a,c)=>String(c.applied||'').localeCompare(String(a.applied||''))).slice(0,6);b+=`<div class="hr"></div><div style="font-weight:700;font-size:13px;margin-bottom:8px">📜 ${escH(v.name)} 최근 이체 (평균 ${won(v.avg)}원 · 총 ${v.cnt}회)</div><div class="anom-list">${hist.map(d=>`<div class="anom-row"><span>${escH(d.applied||'-')}</span><b>${won(d.amount)}${d.unit==='원'?'원':' '+d.unit}</b><span>${escH(d.purpose||'')}</span></div>`).join('')||'<div class="t-sub">이력 없음</div>'}</div>`;}
@@ -403,6 +416,31 @@ function renderAnomalies(){
   h+=`<th class="rz">거래처 · 적요<span class="rzh" data-rz="payout" onclick="event.stopPropagation()"></span></th><th style="text-align:right">금액</th><th>요청일</th><th>상태</th><th>이상 신호</th><th></th></tr></thead><tbody>`;
   rows.forEach(({r,f})=>{const st=PSTATUS[r.status]||['?',''];
     h+=`<tr style="cursor:pointer" onclick="anomalyDetail('${r.id}')"><td class="rzc"><div class="t-name">${escH(r.payee)}</div><div class="t-sub">${escH(r.purpose||'')}</div></td><td style="text-align:right" class="num">${won(r.amount)}${r.unit==='원'?'원':' '+r.unit}</td><td class="t-sub num" style="white-space:nowrap">${escH(r.applied||'-')}</td><td><span class="badge ${st[1]}">${st[0]}</span></td><td style="white-space:normal;max-width:260px">${f.map(flagHtml).join('')}</td><td><button class="iconbtn" title="근거 보기" onclick="event.stopPropagation();anomalyDetail('${r.id}')">${I.eye}</button></td></tr>`;
+  });
+  h+='</tbody></table></div></div>';c.innerHTML=h;
+}
+/* ── 증빙 미수취 추적 (적격증빙 받을예정 건) ── */
+function renderProof(){
+  const c=document.getElementById('content');
+  const base=roleScope(DB.payout).filter(r=>needsProof(r)&&(r.status==='paid'||r.status==='requested'));
+  base.sort((a,b)=>(proofOverdue(b)?1:0)-(proofOverdue(a)?1:0)||String(a.proofDate||'').localeCompare(String(b.proofDate||'')));
+  const over=base.filter(proofOverdue);
+  const krw=base.filter(r=>r.unit==='원').reduce((s,r)=>s+r.amount,0);
+  let h=`<div class="sumbar"><div class="sb-seg"><span>증빙 미수취</span> <b>${base.length}건</b></div><div class="sb-seg"><span>⛔ 발행기한 경과</span> <b style="${over.length?'color:var(--sys-red)':''}">${over.length}건</b></div><div class="sb-seg"><span>금액(원화)</span> <b>${won(krw)}원</b></div></div>`;
+  h+=`<div class="t-sub" style="margin:-2px 2px 12px;line-height:1.6">세금계산서·현금영수증·계산서를 <b>받을 예정</b>으로 등록한 건이에요. 홈택스에서 확인되면 <b>수취완료</b>를 눌러주세요. (발행기한 = 작성일 기준 익월 10일)</div>`;
+  if(!base.length){h+=`<div class="card"><div class="empty">${I.check}<div>미수취 증빙이 없어요 👍 모두 정상 처리됐어요.</div></div></div>`;c.innerHTML=h;return;}
+  h+='<div class="card"><div class="table-wrap"><table class="cardtbl" style="--cw:'+colwVar('payout')+'"><thead><tr>';
+  h+=`<th class="rz">거래처 · 적요<span class="rzh" data-rz="payout" onclick="event.stopPropagation()"></span></th><th class="mhide">증빙유형</th><th class="mhide">신청인</th><th>작성일</th><th>발행기한</th><th style="text-align:right">금액</th><th>상태</th><th></th></tr></thead><tbody>`;
+  base.forEach(r=>{const st=PSTATUS[r.status]||['?',''];const ov=proofOverdue(r);const dl=proofDeadline(r.proofDate);const dls=dl?dl.getFullYear()+'-'+String(dl.getMonth()+1).padStart(2,'0')+'-'+String(dl.getDate()).padStart(2,'0'):'-';
+    h+=`<tr class="rowclk" onclick="viewPayout('${r.id}')">`;
+    h+=`<td class="rzc"><div class="t-name">${escH(r.payee)}</div><div class="t-sub">${escH(r.purpose||'-')}</div></td>`;
+    h+=`<td class="mhide"><span class="tag tag-gray">${escH(r.proofType)}</span></td>`;
+    h+=`<td class="mhide t-sub nmcell">${r.requester?nameWrap(r.requester):'-'}</td>`;
+    h+=`<td class="t-sub num" style="white-space:nowrap">${escH(r.proofDate||'-')}</td>`;
+    h+=`<td style="white-space:nowrap">${ov?`<span class="flag warn" title="익월 10일 초과">⛔ 경과</span> <span class="t-sub num">${dls}</span>`:`<span class="t-sub num">~${dls}</span>`}</td>`;
+    h+=`<td style="text-align:right"><span class="amt">${won(r.amount)}</span>${r.unit!=='원'?' <span class="t-sub">'+r.unit+'</span>':''}</td>`;
+    h+=`<td><span class="badge ${st[1]}">${st[0]}</span></td>`;
+    h+=`<td><div class="rowact">${canApprove()?`<button class="btn btn-sm btn-primary" onclick="event.stopPropagation();markProof('${r.id}',true)">수취완료</button>`:`<button class="iconbtn" title="상세" onclick="event.stopPropagation();viewPayout('${r.id}')">${I.eye}</button>`}</div></td></tr>`;
   });
   h+='</tbody></table></div></div>';c.innerHTML=h;
 }
@@ -461,14 +499,16 @@ const PAGES={
   invoice:{t:'세금계산서 발행 요청',d:'세금계산서 발행 요청을 등록·처리합니다.',render:renderInvoice},
   vendors:{t:'거래처 관리',d:'사업자번호로 통합된 거래처와 계좌를 관리합니다.',render:renderVendors},
   anomaly:{t:'이상거래 검토',d:'이상 신호가 감지된 이체를 모아서 검토합니다. 항목을 클릭하면 감지 근거(중복 내역·계좌·과거 통계)가 나와요.',render:renderAnomalies},
+  proof:{t:'증빙 미수취',d:'세금계산서·현금영수증·계산서를 "받을 예정"으로 등록한 건을 추적합니다. 홈택스에서 확인되면 수취완료를 눌러주세요. (발행기한 = 작성일 기준 익월 10일)',render:renderProof},
 };
-const NAV=[['dashboard','대시보드','m_dash'],['payout','이체 요청','m_money'],['invoice','세금계산서 발행','m_doc'],['anomaly','이상거래 검토','m_alert'],['vendors','거래처 관리','m_vendor']];
+const NAV=[['dashboard','대시보드','m_dash'],['payout','이체 요청','m_money'],['invoice','세금계산서 발행','m_doc'],['proof','증빙 미수취','m_proof'],['anomaly','이상거래 검토','m_alert'],['vendors','거래처 관리','m_vendor']];
 function buildNav(){
   let h='<div class="nav-label">재무 업무</div>';let mh='';
   NAV.forEach(([k,label,ic])=>{
-    if((k==='vendors'||k==='anomaly')&&!canViewAll())return;
+    if((k==='vendors'||k==='anomaly'||k==='proof')&&!canViewAll())return;
     let dot='';
     if(canApprove()&&(k==='payout'||k==='invoice')){const arr=k==='payout'?DB.payout:DB.invoice;const c=arr.filter(r=>r.status==='requested').length;if(c)dot=`<span class="dot">${c}</span>`;}
+    if(canViewAll()&&k==='proof'){const c=DB.payout.filter(r=>r.status==='paid'&&proofOverdue(r)).length;if(c)dot=`<span class="dot">${c}</span>`;}
     h+=`<div class="nav-item${current===k?' active':''}" onclick="go('${k}')">${I[ic]}<span>${label}</span>${dot}</div>`;
     mh+=`<button class="mnav-item${current===k?' active':''}" onclick="go('${k}')">${I[ic]}<span>${escH(label.split(' ')[0])}</span>${dot}</button>`;
   });
@@ -508,7 +548,7 @@ function periodSel(){return `<div class="seg"><button class="${PERIOD==='month'?
 function fmtCur(list){const m={};list.forEach(r=>{if(r.unit&&r.unit!=='원')m[r.unit]=(m[r.unit]||0)+r.amount;});return Object.entries(m).map(([u,v])=>` · ${u} ${won(v)}`).join('');}
 function payoutSumBar(list){const krwSum=list.filter(r=>r.unit==='원').reduce((s,r)=>s+r.amount,0);const pend=list.filter(r=>r.status==='requested');const pendKrw=pend.filter(r=>r.unit==='원').reduce((s,r)=>s+r.amount,0);return `<div class="sumbar"><div class="sb-seg"><span>표시</span> <b>${list.length}건</b></div><div class="sb-seg"><span>원화 합계</span> <b>${won(krwSum)}원</b>${fmtCur(list)}</div><div class="sb-seg"><span>미지급</span> <b>${pend.length}건</b> · ${won(pendKrw)}원</div><button class="btn btn-sm btn-line sb-x" onclick="exportPayoutList()">${I.download}<span>엑셀</span></button></div>`;}
 function invoiceSumBar(list){const supply=list.reduce((s,r)=>s+r.supply,0),vat=list.reduce((s,r)=>s+r.tax,0),total=list.reduce((s,r)=>s+r.total,0);const pend=list.filter(r=>r.status==='requested').length;return `<div class="sumbar"><div class="sb-seg"><span>표시</span> <b>${list.length}건</b></div><div class="sb-seg"><span>공급가액</span> <b>${won(supply)}</b> · <span>세액</span> ${won(vat)} · <span>합계</span> <b>${won(total)}원</b></div><div class="sb-seg"><span>발행대기</span> <b>${pend}건</b></div><button class="btn btn-sm btn-line sb-x" onclick="exportInvoiceList()">${I.download}<span>엑셀</span></button></div>`;}
-function todoBanner(){const pend=DB.payout.filter(r=>r.status==='requested');const pendKrw=pend.filter(r=>r.unit==='원').reduce((s,r)=>s+r.amount,0);const now=new Date(today());const due=DB.invoice.filter(r=>{if(r.status!=='requested')return false;const dl=invoiceDeadline(r.writeDate);if(!dl)return false;return Math.round((dl-now)/86400000)<=3;});const overdue=due.filter(r=>(invoiceDeadline(r.writeDate)-now)<0).length;if(!pend.length&&!due.length)return `<div class="todo ok">✅ 오늘 처리할 미지급·발행 항목이 없어요.</div>`;let it=[];if(pend.length)it.push(`<button class="todo-item" onclick="current='payout';clearFilter();FILTER.statuses=new Set(['requested']);render()"><b>${pend.length}건</b> 미지급 대기 · <span>${won(pendKrw)}원</span></button>`);if(due.length)it.push(`<button class="todo-item warn" onclick="current='invoice';clearFilter();_sort.invoice={k:'writeDate',dir:1};render()"><b>${due.length}건</b> 세금계산서 발행기한 임박${overdue?' (기한 지남 '+overdue+')':''}</button>`);return `<div class="todo"><span class="todo-h">📌 오늘 할 일</span>${it.join('')}</div>`;}
+function todoBanner(){const pend=DB.payout.filter(r=>r.status==='requested');const pendKrw=pend.filter(r=>r.unit==='원').reduce((s,r)=>s+r.amount,0);const now=new Date(today());const due=DB.invoice.filter(r=>{if(r.status!=='requested')return false;const dl=invoiceDeadline(r.writeDate);if(!dl)return false;return Math.round((dl-now)/86400000)<=3;});const overdue=due.filter(r=>(invoiceDeadline(r.writeDate)-now)<0).length;const proofOver=DB.payout.filter(r=>r.status==='paid'&&proofOverdue(r));if(!pend.length&&!due.length&&!proofOver.length)return `<div class="todo ok">✅ 오늘 처리할 미지급·발행 항목이 없어요.</div>`;let it=[];if(pend.length)it.push(`<button class="todo-item" onclick="current='payout';clearFilter();FILTER.statuses=new Set(['requested']);render()"><b>${pend.length}건</b> 미지급 대기 · <span>${won(pendKrw)}원</span></button>`);if(due.length)it.push(`<button class="todo-item warn" onclick="current='invoice';clearFilter();_sort.invoice={k:'writeDate',dir:1};render()"><b>${due.length}건</b> 세금계산서 발행기한 임박${overdue?' (기한 지남 '+overdue+')':''}</button>`);if(proofOver.length)it.push(`<button class="todo-item warn" onclick="go('proof')"><b>${proofOver.length}건</b> 증빙 미수취 (발행기한 경과)</button>`);return `<div class="todo"><span class="todo-h">📌 오늘 할 일</span>${it.join('')}</div>`;}
 function renderDashboard(){
   const c=document.getElementById('content');
   const EXCLUDE_TEAMS=new Set(['사채업자','글로벌','앱팀 (재미팀)','앱 (재미)']);
@@ -562,7 +602,7 @@ function renderPayout(){
     h+=`<tr class="rowclk" onclick="viewPayout('${r.id}')">`;
     if(mineApprove)h+=`<td class="mhide"><input type="checkbox" class="cbx" ${_sel.has(r.id)?'checked':''} onclick="event.stopPropagation();toggleSel('${r.id}')"></td>`;
     h+=`<td class="rzc"><div class="t-name">${escH(r.payee)} ${r.category==='유류비'?'<span class="tag tag-fuel">유류비</span>':''}</div><div class="t-sub">${escH(r.purpose||'-')}</div></td>`;
-    h+=`<td class="mhide">${escH(normalizeTeam(r.team)||'-')}</td><td class="mhide">${r.requester?escH(r.requester):'<span class="t-sub">-</span>'}</td>`;
+    h+=`<td class="mhide">${escH(normalizeTeam(r.team)||'-')}</td><td class="mhide nmcell">${r.requester?nameWrap(r.requester):'<span class="t-sub">-</span>'}</td>`;
     h+=`<td class="mhide"><span class="tag tag-gray">${escH(r.category||'-')}</span></td>`;
     h+=`<td class="t-sub num mhide" style="white-space:nowrap">${escH(r.applied||'-')}</td>`;
     h+=`<td class="mhide">${escH(r.bank||'-')}<div class="t-sub num">${escH(r.account||'')}</div></td>`;
@@ -590,20 +630,40 @@ function openPayoutForm(seed){
     <div class="f2"><div class="form-row"><label>금액 <span class="req">*</span></label><input class="input num" id="f_amount" value="${seed.amount?won(seed.amount):''}" placeholder="0" oninput="this.value=comma(this.value);dupHint()"></div><div class="form-row"><label>통화</label><select class="input" id="f_unit">${cur}</select></div></div>
     <div class="form-row"><label>분류</label><select class="input" id="f_cat">${cats}</select></div>
     <div class="form-row"><label>적요/메모</label><textarea class="input" id="f_purpose" placeholder="예: 6월 광고비 정산">${escH(seed.purpose||'')}</textarea></div>
-    <div class="form-row"><label>증빙 (Dropbox 링크)<span class="hint">선택 · 거래명세서·견적서 등</span></label><input class="input" id="f_evidence" value="${escH(seed.evidence||'')}" placeholder="https://www.dropbox.com/..."></div>
-    <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--gray-700)"><input type="checkbox" class="cbx" id="f_tax">세금계산서 발행 대상 (발행주체=예금주 확인함)</label>
+    <div style="border:1px solid var(--gray-200);border-radius:var(--r-md);padding:12px 13px;margin:2px 0 12px;background:#f8f9fb">
+      <div style="font-weight:700;font-size:12.5px;margin-bottom:9px">🧾 증빙 <span class="req">*</span> <span class="hint" style="font-weight:400">적격증빙 미수취 시 가산세 — 꼭 선택</span></div>
+      <div class="form-row" style="margin-bottom:10px"><label>증빙 유형 <span class="req">*</span></label><select class="input" id="f_prooftype" onchange="proofTypeChange()"><option value="">— 선택 —</option>${PROOF_TYPES.map(p=>`<option value="${p[0]}" ${seed.proofType===p[0]?'selected':''}>${p[1]}</option>`).join('')}</select></div>
+      <div id="f_proofAdeq" style="display:none"><div class="f2"><div class="form-row"><label>작성일자 <span class="req">*</span><span class="hint">기본=이체당일</span></label><input class="input" type="date" id="f_proofdate" value="${seed.proofDate||today()}"></div><div class="form-row"><label>발행상태</label><select class="input" id="f_proofstatus"><option value="받을예정">받을 예정</option><option value="수취완료" ${seed.proofStatus==='수취완료'?'selected':''}>수취완료</option></select></div></div></div>
+      <div class="form-row" id="f_proofUrlRow" style="display:none;margin-bottom:0"><label id="f_proofUrlLbl">증빙 링크 (Dropbox)<span class="hint">선택</span></label><input class="input" id="f_evidence" value="${escH(seed.evidence||'')}" placeholder="https://www.dropbox.com/..."></div>
+      <div class="form-row" id="f_proofNoneRow" style="display:none;margin-bottom:0"><label>증빙 없음 사유 <span class="req">*</span></label><input class="input" id="f_proofreason" value="${escH(seed.proofReason||'')}" placeholder="예: 급여·인건비 / 해외송금 / 공과금 / 경조사비"></div>
+    </div>
     <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--gray-700);margin-top:8px"><input type="checkbox" class="cbx" id="f_recur" onchange="var n=document.getElementById('f_recurBox');n.style.display=this.checked?'block':'none'">🔁 매월 정기 이체로 등록</label>
     <div class="form-row" id="f_recurBox" style="display:none;margin-top:8px"><label>반복 횟수(총 N회) <span class="hint">이번 건 포함</span></label><input class="input num" id="f_recurN" value="3"></div>
     <div id="f_anom" style="margin-top:10px"></div>
   `,`<button class="btn btn-secondary" onclick="closeModal()">취소</button><button class="btn btn-primary" onclick="submitPayout()">요청 등록</button>`);
   if(seed.unit)document.getElementById('f_unit').value=seed.unit;
-  dupHint();
+  dupHint();proofTypeChange();
+}
+function proofTypeChange(){
+  const t=val('f_prooftype');const adeq=PROOF_ADEQ.has(t);
+  const A=document.getElementById('f_proofAdeq');if(A)A.style.display=adeq?'block':'none';
+  const U=document.getElementById('f_proofUrlRow');if(U)U.style.display=(t&&t!=='none')?'block':'none';
+  const L=document.getElementById('f_proofUrlLbl');if(L)L.innerHTML=(t==='명세서')?'증빙 링크 (Dropbox) <span class="req">*</span>':'증빙 링크 (Dropbox)<span class="hint">선택</span>';
+  const N=document.getElementById('f_proofNoneRow');if(N)N.style.display=(t==='none')?'block':'none';
 }
 function onPayeePick(){const v=findVendor(val('f_payee'));if(v){const pa=v.accounts.find(a=>a.primary)||v.accounts[0];if(pa){document.getElementById('f_bank').value=pa.bank;document.getElementById('f_account').value=pa.account;}document.getElementById('f_unit').value=v.unit;}dupHint();}
-function dupHint(){const el=document.getElementById('f_anom');if(!el)return;const amt=numVal('f_amount');const unit=val('f_unit')||'원';const r={payee:val('f_payee'),account:val('f_account'),amount:amt,unit,category:val('f_cat'),applied:today(),requester:ME().name};if(!r.payee){el.innerHTML='';return;}const flags=scanPayout(r);const big=unit==='원'&&amt>=THRESHOLD;el.innerHTML=(flags.length?'<div style="margin-bottom:6px">'+flags.map(flagHtml).join('')+'</div>':'')+(big?`<div class="t-sub" style="margin-top:6px">🔺 1천만원 이상 — 고액 거래건으로 기록됩니다.</div>`:'');}
+function dupHint(){const el=document.getElementById('f_anom');if(!el)return;const amt=numVal('f_amount');const unit=val('f_unit')||'원';const r={payee:val('f_payee'),account:val('f_account'),amount:amt,unit,category:val('f_cat'),applied:today(),requester:ME().name};if(!r.payee){el.innerHTML='';return;}const flags=scanPayout(r);const big=unit==='원'&&amt>=THRESHOLD;const vend=findVendor(r.payee);
+  const newVendorNote=(r.payee&&!vend)?`<div style="margin-top:8px;background:var(--billy-blue-50);border:1px solid var(--billy-blue-100);border-radius:var(--r-md);padding:10px 12px;font-size:12.5px;line-height:1.65;color:var(--gray-800)">🆕 <b>첫 거래처네요!</b> 추가 증빙 링크(Dropbox)에 <b>통장사본 및 사업자등록증 또는 신분증</b>을 넣어주세요. 첫 거래처의 경우 <b>기본 서류 확인 후 이체가 완료</b>됩니다.</div>`:'';
+  const docMiss=(vend&&(!vend.bankbookUrl||!vend.bizregUrl))?`<div class="t-sub" style="margin-top:6px">📎 통장사본·사업자등록증 미등록 거래처예요. 안전을 위해 거래처 관리에서 등록을 권장해요.</div>`:'';
+  el.innerHTML=(flags.length?'<div style="margin-bottom:6px">'+flags.map(flagHtml).join('')+'</div>':'')+(big?`<div class="t-sub" style="margin-top:6px">🔺 1천만원 이상 — 고액 거래건으로 기록됩니다.</div>`:'')+newVendorNote+docMiss;}
 function submitPayout(){
-  const r={id:uid('p'),requester:ME().name,team:ME().team,payee:val('f_payee'),bank:val('f_bank'),account:val('f_account'),amount:numVal('f_amount'),unit:val('f_unit')||'원',category:val('f_cat'),purpose:val('f_purpose'),evidence:val('f_evidence'),hasTax:document.getElementById('f_tax').checked,status:'requested',applied:today(),paidAt:''};
+  const pt=val('f_prooftype'),adeq=PROOF_ADEQ.has(pt);
+  const r={id:uid('p'),requester:ME().name,team:ME().team,payee:val('f_payee'),bank:val('f_bank'),account:val('f_account'),amount:numVal('f_amount'),unit:val('f_unit')||'원',category:val('f_cat'),purpose:val('f_purpose'),evidence:val('f_evidence'),proofType:pt,proofDate:adeq?val('f_proofdate'):'',proofStatus:adeq?(val('f_proofstatus')||'받을예정'):'',proofReason:pt==='none'?val('f_proofreason'):'',proofReceivedAt:(adeq&&val('f_proofstatus')==='수취완료')?today():'',hasTax:pt==='세금계산서',status:'requested',applied:today(),paidAt:''};
   if(!r.payee||!r.account||!r.amount){toast('거래처·계좌·금액은 필수예요.','err');return;}
+  if(!pt){toast('증빙 유형을 선택해 주세요. (미수취 시 가산세 대상이에요)','err');return;}
+  if(adeq&&!r.proofDate){toast('증빙 작성일자를 입력해 주세요.','err');return;}
+  if(pt==='명세서'&&!r.evidence){toast('거래명세서·영수증은 증빙 링크(Dropbox)가 필요해요.','err');return;}
+  if(pt==='none'&&!r.proofReason){toast('증빙 없음 사유를 적어주세요.','err');return;}
   if(isLockedMonth(today())){toast(today().slice(0,7)+'은 마감되어 신청할 수 없어요.','err');return;}
   r.approver=approverFor(r.requester,r.amount);
   const recur=document.getElementById('f_recur').checked,total=Math.max(1,numVal('f_recurN')||1);
@@ -632,11 +692,11 @@ function openFuelForm(){
 function submitFuel(){
   const from=val('x_from'),to=val('x_to'),visit=val('x_visit'),amount=numVal('x_amount'),acc=val('x_acc');
   if(!from||!to||!visit||!amount||!acc){toast('출발지·도착지·목적·금액·계좌는 필수예요.','err');return;}
-  const r={id:uid('p'),requester:ME().name,team:ME().team,payee:ME().name,bank:val('x_bank'),account:acc,amount,unit:'원',category:'유류비',purpose:visit+' ('+from+'→'+to+')',evidence:val('x_ev'),hasTax:false,status:'requested',applied:val('x_date')||today(),paidAt:'',fuel:{from,to,visit,km:val('x_km'),carNo:val('x_car'),roundTrip:document.getElementById('x_round').checked}};
+  const r={id:uid('p'),requester:ME().name,team:ME().team,payee:ME().name,bank:val('x_bank'),account:acc,amount,unit:'원',category:'유류비',purpose:visit+' ('+from+'→'+to+')',evidence:val('x_ev'),proofType:(val('x_ev')?'명세서':'none'),proofReason:(val('x_ev')?'':'유류비·출장 정산'),hasTax:false,status:'requested',applied:val('x_date')||today(),paidAt:'',fuel:{from,to,visit,km:val('x_km'),carNo:val('x_car'),roundTrip:document.getElementById('x_round').checked}};
   r.approver=approverFor(r.requester,amount);
   sv('fin_submit_payout',{p:payoutPayload(r,0)},()=>{DB.payout.unshift(r);}).then(()=>{closeModal();current='payout';render();toast('유류비 신청을 등록했어요.','ok');});
 }
-function clonePayout(id){const r=DB.payout.find(x=>x.id===id);if(!r)return;openPayoutForm({payee:r.payee,bank:r.bank,account:r.account,amount:r.amount,unit:r.unit,category:r.category,purpose:r.purpose});toast('과거 요청을 복제했어요.','ok');}
+function clonePayout(id){const r=DB.payout.find(x=>x.id===id);if(!r)return;openPayoutForm({payee:r.payee,bank:r.bank,account:r.account,amount:r.amount,unit:r.unit,category:r.category,purpose:r.purpose,proofType:r.proofType});toast('과거 요청을 복제했어요.','ok');}
 function cancelPayout(id){confirmModal('이체 요청 철회','이 요청을 철회할까요?',()=>{sv('fin_cancel_payout',{p_id:id},()=>{const r=DB.payout.find(x=>x.id===id);if(r)r.status='canceled';}).then(()=>{render();toast('철회했어요.');});});}
 function viewPayout(id){
   const r=DB.payout.find(x=>x.id===id);if(!r)return;const st=PSTATUS[r.status];const flags=r.status==='requested'?scanPayout(r):[];
@@ -644,7 +704,7 @@ function viewPayout(id){
   if(canApprove()&&r.status==='requested')foot=`<button class="btn btn-line btn-sm" onclick="exportPayoutOne('${id}')">${I.download}<span>은행 엑셀</span></button><button class="btn btn-danger" onclick="decidePayout('${id}','rejected')">반려</button><button class="btn btn-primary" onclick="decidePayout('${id}','paid')">지급완료</button>`;
   const fuel=r.fuel?`<div class="hr"></div><div style="font-weight:700;font-size:13px;margin-bottom:8px">🚗 유류비/출장 정보</div><div class="dl"><dt>경로</dt><dd>${escH(r.fuel.from)} → ${escH(r.fuel.to)} ${r.fuel.roundTrip?'(왕복)':''}</dd><dt>목적</dt><dd>${escH(r.fuel.visit||'')}</dd><dt>거리</dt><dd>${escH(r.fuel.km||'-')} km</dd><dt>차량</dt><dd>${escH(r.fuel.carNo||'-')}</dd></div>`:'';
   const wh=r.wh?`<div class="hr"></div><div style="font-weight:700;font-size:13px;margin-bottom:8px">🧾 원천징수</div><div class="dl"><dt>지급총액</dt><dd>${won(r.wh.gross)}원</dd><dt>원천징수</dt><dd>${won(r.wh.tax)}원 (${escH(r.wh.type)})</dd><dt>실지급액</dt><dd><b>${won(r.wh.net)}원</b></dd></div>`:'';
-  const ev=r.evidence?`<div class="hr"></div><div class="dl"><dt>증빙</dt><dd><a href="${escH(r.evidence)}" target="_blank" rel="noopener" style="color:var(--billy-blue);text-decoration:underline">Dropbox 링크 ↗</a></dd></div>`:'';
+  const proof=proofDetailHtml(r);
   modal('이체 요청 상세','',(flags.length?'<div style="margin-bottom:12px">'+flags.map(flagHtml).join('')+'</div>':'')+`<div class="dl">
     <dt>상태</dt><dd><span class="badge ${st[1]}">${st[0]}</span></dd>
     <dt>거래처/예금주</dt><dd>${escH(r.payee)} ${r.category==='유류비'?'<span class="tag tag-fuel">유류비</span>':''}</dd>
@@ -652,13 +712,30 @@ function viewPayout(id){
     <dt>금액</dt><dd><b>${won(r.amount)} ${escH(r.unit)}</b></dd>
     <dt>분류</dt><dd>${escH(r.category||'-')}</dd>
     <dt>적요</dt><dd>${escH(r.purpose||'-')}</dd>
-    <dt>세금계산서</dt><dd>${r.hasTax?'발행 대상':'해당 없음'}</dd>
     <dt>신청인</dt><dd>${escH(r.requester||'-')}</dd>
     <dt>팀</dt><dd>${escH(normalizeTeam(r.team)||'-')}</dd>
     <dt>고액 이체건</dt><dd>${isBig(r)?'🔺 1천만+ (고액)':'해당 없음'}</dd>
     ${r.paidAt?`<dt>지급완료</dt><dd>${escH(r.paidAt)}</dd>`:''}
-  </div>${fuel}${wh}${ev}`,foot);
+  </div>${proof}${fuel}${wh}`,foot);
 }
+function proofDetailHtml(r){
+  if(!r.proofType)return '';
+  const url=r.evidence?`<a href="${escH(r.evidence)}" target="_blank" rel="noopener" style="color:var(--billy-blue);text-decoration:underline">Dropbox 링크 ↗</a>`:'';
+  let body='';
+  if(PROOF_ADEQ.has(r.proofType)){
+    const ov=proofOverdue(r);
+    const stxt=r.proofStatus==='수취완료'?`<span class="badge badge-paid">수취완료${r.proofReceivedAt?' · '+escH(r.proofReceivedAt):''}</span>`:`<span class="badge ${ov?'badge-rejected':'badge-pending'}">받을 예정${ov?' · ⛔ 발행기한 경과':''}</span>`;
+    const dl=proofDeadline(r.proofDate);const dls=dl?dl.getFullYear()+'-'+String(dl.getMonth()+1).padStart(2,'0')+'-'+String(dl.getDate()).padStart(2,'0'):'-';
+    body=`<div class="dl"><dt>증빙 유형</dt><dd>${escH(PROOF_LABEL[r.proofType]||r.proofType)}</dd><dt>작성일자</dt><dd class="num">${escH(r.proofDate||'-')}</dd><dt>발행기한</dt><dd class="num">~${dls} <span class="t-sub">(익월 10일)</span></dd><dt>발행상태</dt><dd>${stxt}</dd>${url?`<dt>증빙 링크</dt><dd>${url}</dd>`:''}</div>`;
+    if(canApprove())body+=`<div style="margin-top:9px">${r.proofStatus==='수취완료'?`<button class="btn btn-sm btn-line" onclick="markProof('${r.id}',false)">받을예정으로 되돌리기</button>`:`<button class="btn btn-sm btn-primary" onclick="markProof('${r.id}',true)">${I.check}<span>증빙 수취완료</span></button>`}</div>`;
+  }else if(r.proofType==='none'){
+    body=`<div class="dl"><dt>증빙 유형</dt><dd>증빙 없음</dd><dt>사유</dt><dd>${escH(r.proofReason||'-')}</dd></div>`;
+  }else{
+    body=`<div class="dl"><dt>증빙 유형</dt><dd>${escH(PROOF_LABEL[r.proofType]||r.proofType)}</dd>${url?`<dt>증빙 링크</dt><dd>${url}</dd>`:'<dt>증빙 링크</dt><dd class="t-sub">없음</dd>'}</div>`;
+  }
+  return `<div class="hr"></div><div style="font-weight:700;font-size:13px;margin-bottom:8px">🧾 증빙</div>${body}`;
+}
+function markProof(id,received){sv('fin_mark_proof',{p_id:id,p_received:!!received},()=>{const r=DB.payout.find(x=>x.id===id);if(r){r.proofStatus=received?'수취완료':'받을예정';r.proofReceivedAt=received?today():'';}}).then(()=>{const o=document.getElementById('ov');if(o)o.remove();render();toast(received?'증빙 수취완료로 표시했어요.':'받을예정으로 되돌렸어요.','ok');});}
 function decidePayout(id,status){sv('fin_decide_payout',{p_id:id,p_status:status,p_reason:''},()=>{const r=DB.payout.find(x=>x.id===id);if(r){r.status=status;if(status==='paid')r.paidAt=today();}}).then(()=>{closeModal();render();toast(status==='paid'?'지급완료로 표시했어요.':'반려했어요.',status==='rejected'?'err':'ok');});}
 function batchPayout(status){const ss=DB.payout.filter(r=>_sel.has(r.id)&&r.status==='requested');if(IS_SUPA){Promise.all(ss.map(r=>sb.rpc('fin_decide_payout',{p_id:r.id,p_status:status,p_reason:''}))).then(()=>loadData()).then(()=>{_sel=new Set();render();toast(ss.length+'건 처리.','ok');}).catch(()=>toast('일부 처리 실패','err'));}else{ss.forEach(r=>{r.status='paid';r.paidAt=today();});_sel=new Set();render();toast(ss.length+'건 지급완료 표시.','ok');}}
 function exportPayoutRows(ss,fname){loadXLSX().then(function(){const head=['입금은행','입금계좌번호','예금주','이체금액','통화','적요(통장표시)','분류'];const data=ss.map(r=>[r.bank,r.account,r.payee,r.amount,r.unit,(r.purpose||'').slice(0,7),r.category]);const ws=XLSX.utils.aoa_to_sheet([head].concat(data));ws['!cols']=[{wch:10},{wch:20},{wch:18},{wch:13},{wch:7},{wch:14},{wch:12}];const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'이체요청');XLSX.writeFile(wb,fname);toast(ss.length+'건 엑셀 다운로드.','ok');}).catch(()=>toast('엑셀 로드 실패','err'));}
@@ -685,7 +762,7 @@ function submitWH(){
   if(!name||!acc||!g){toast('받는분·계좌·총액은 필수예요.','err');return;}
   if(!taxName||rrn.length!==13){toast('소득신고 성함·주민등록번호(13자리)를 확인해 주세요.','err');return;}
   if(isLockedMonth(today())){toast(today().slice(0,7)+'은 마감되어 신청할 수 없어요.','err');return;}
-  const r={id:uid('p'),requester:ME().name,team:ME().team,payee:name,bank:val('w_bank'),account:acc,amount:net,unit:'원',category:'인건비(3.3%)',purpose:(val('w_memo')||'원천징수 지급'),evidence:val('w_ev'),hasTax:false,status:'requested',applied:today(),paidAt:'',wh:{gross:g,rate,tax,net,type:val('w_type'),taxName,rrn}};
+  const r={id:uid('p'),requester:ME().name,team:ME().team,payee:name,bank:val('w_bank'),account:acc,amount:net,unit:'원',category:'인건비(3.3%)',purpose:(val('w_memo')||'원천징수 지급'),evidence:val('w_ev'),proofType:'none',proofReason:'3.3% 원천징수 (지급명세서 제출)',hasTax:false,status:'requested',applied:today(),paidAt:'',wh:{gross:g,rate,tax,net,type:val('w_type'),taxName,rrn}};
   r.approver=approverFor(r.requester,net);
   sv('fin_submit_payout',{p:payoutPayload(r,0)},()=>{DB.payout.unshift(r);}).then(()=>{closeModal();current='payout';render();toast('원천징수 지급 신청 등록 (실지급 '+won(net)+'원).','ok');});
 }
@@ -702,7 +779,7 @@ function submitBulk(){
   const rows=parseBulk().filter(r=>r.payee&&r.account&&r.amount);
   if(!rows.length){toast('붙여넣은 데이터를 확인해 주세요 (예금주·계좌·금액 필요).','err');return;}
   if(isLockedMonth(today())){toast(today().slice(0,7)+'은 마감되어 신청할 수 없어요.','err');return;}
-  const mk=r=>({id:uid('p'),requester:ME().name,team:ME().team,payee:r.payee,bank:r.bank,account:r.account,amount:r.amount,unit:'원',category:'기타',purpose:r.purpose,evidence:'',hasTax:false,status:'requested',applied:today(),paidAt:''});
+  const mk=r=>({id:uid('p'),requester:ME().name,team:ME().team,payee:r.payee,bank:r.bank,account:r.account,amount:r.amount,unit:'원',category:'기타',purpose:r.purpose,evidence:'',proofType:'세금계산서',proofDate:today(),proofStatus:'받을예정',hasTax:false,status:'requested',applied:today(),paidAt:''});
   if(IS_SUPA){Promise.all(rows.map(r=>sb.rpc('fin_submit_payout',{p:payoutPayload(mk(r),0)}))).then(()=>loadData()).then(()=>{closeModal();render();toast(rows.length+'건 일괄 등록했어요.','ok');}).catch(()=>toast('일부 등록 실패','err'));}
   else{rows.forEach(r=>DB.payout.unshift(mk(r)));closeModal();render();toast(rows.length+'건 일괄 등록했어요.','ok');}
 }
@@ -782,11 +859,44 @@ function _fn(s){return String(s||'').replace(/[\\/:*?"<>|]/g,'').slice(0,20);}
 function exportPayoutOne(id){const r=DB.payout.find(x=>x.id===id);if(!r){toast('항목을 찾을 수 없어요.','err');return;}exportPayoutRows([r],'이체_'+_fn(r.payee)+'_'+today()+'.xlsx');}
 function exportInvoiceOne(id){const r=DB.invoice.find(x=>x.id===id);if(!r){toast('항목을 찾을 수 없어요.','err');return;}exportInvoiceRows([r],'세금계산서_'+_fn(r.company)+'_'+today()+'.xlsx');}
 /* ===================== 거래처 관리 ===================== */
+/* 신규 거래처 승인 대기 = 이체엔 썼지만 아직 거래처 마스터에 없는 입금처 */
+function pendingNewVendors(){
+  const seen={};
+  DB.payout.forEach(r=>{
+    if(r.status==='canceled'||r.status==='rejected')return;
+    if(r.category==='유류비'||r.category==='인건비(3.3%)')return;       // 본인 정산·인건비 제외
+    if(r.payee&&r.payee===r.requester)return;                          // 본인 송금 제외
+    if(!r.payee||findVendor(r.payee))return;                           // 이미 마스터에 있음
+    if(/^(주식회사\s*|국세[_\s]*)?빌리지베이비/.test(r.payee))return;   // 내부이체 제외
+    let s=seen[r.payee];if(!s){s=seen[r.payee]={payee:r.payee,cnt:0,sum:0,bank:'',account:'',unit:'원',evidence:'',last:''};}
+    s.cnt++;if(r.unit==='원')s.sum+=r.amount;
+    if(!s.last||String(r.applied)>=s.last){s.last=r.applied;s.bank=r.bank;s.account=r.account;s.unit=r.unit||'원';if(r.evidence)s.evidence=r.evidence;}
+  });
+  return Object.keys(seen).map(k=>seen[k]).sort((a,b)=>String(b.last).localeCompare(String(a.last)));
+}
+function approveVendorForm(idx){const p=(window._pendVendors||[])[idx];if(!p)return;
+  modal('신규 거래처 등록','wide',`<div class="policy" style="background:var(--billy-blue-50);border-color:var(--billy-blue-100)"><b style="color:var(--billy-blue)">🆕 첫 거래처 등록</b> — 통장사본·사업자등록증(또는 신분증) 확인 후 등록하면, 다음 이체부터 자동 인식돼요.</div>
+    <div class="f2"><div class="form-row"><label>거래처명 <span class="req">*</span></label><input class="input" id="nv_name" value="${escH(p.payee)}"></div><div class="form-row"><label>사업자등록번호</label><input class="input num" id="nv_biz" placeholder="10자리(선택)" maxlength="10"></div></div>
+    <div class="f2"><div class="form-row"><label>팀</label><select class="input" id="nv_team"><option value="">-</option>${TEAMS_ALL.map(t=>`<option>${t}</option>`).join('')}</select></div><div class="form-row"><label>통화</label><select class="input" id="nv_unit">${CURRENCIES.map(u=>`<option ${p.unit===u?'selected':''}>${u}</option>`).join('')}</select></div></div>
+    <div class="f2"><div class="form-row"><label>은행</label><select class="input" id="nv_bank">${BANKS.map(b=>`<option ${p.bank===b?'selected':''}>${b}</option>`).join('')}</select></div><div class="form-row"><label>계좌번호</label><input class="input num" id="nv_acc" value="${escH(p.account||'')}"></div></div>
+    <div class="form-row"><label>예금주</label><input class="input" id="nv_holder" value="${escH(p.payee)}"></div>
+    <div class="form-row"><label>📎 통장 사본 (Dropbox)</label><input class="input" id="nv_bankbook" value="${escH(p.evidence||'')}" placeholder="https://www.dropbox.com/..."></div>
+    <div class="form-row"><label>📎 사업자등록증 / 신분증 (Dropbox)</label><input class="input" id="nv_bizreg" placeholder="https://www.dropbox.com/..."></div>
+  `,`<button class="btn btn-secondary" onclick="closeModal()">취소</button><button class="btn btn-primary" onclick="submitApproveVendor()">신규 거래처로 등록</button>`);
+}
+function submitApproveVendor(){
+  const name=val('nv_name');if(!name){toast('거래처명을 입력해 주세요.','err');return;}
+  const biz=digits(val('nv_biz'));if(biz&&biz.length!==10){toast('사업자등록번호는 10자리예요.','err');return;}
+  const payload={name,bizNo:biz,team:val('nv_team'),unit:val('nv_unit')||'원',bank:val('nv_bank'),account:val('nv_acc'),holder:val('nv_holder')||name,bankbook:val('nv_bankbook'),bizreg:val('nv_bizreg')};
+  sv('fin_approve_vendor',{p:payload},()=>{VENDORS.push({id:uid('v'),name:payload.name,bizNo:payload.bizNo,email:'',team:payload.team,unit:payload.unit,cnt:0,avg:0,max:0,lastDate:today(),bankbookUrl:payload.bankbook,bizregUrl:payload.bizreg,accounts:payload.account?[{id:uid('a'),bank:payload.bank,account:payload.account,holder:payload.holder,primary:true}]:[]});}).then(()=>{closeModal();render();toast('신규 거래처로 등록했어요. 다음 이체부터 자동 인식돼요.','ok');});
+}
 function renderVendors(){
   const c=document.getElementById('content');let list=VENDORS.slice();
   if(_q){const q=_q.toLowerCase();list=list.filter(v=>(v.name+v.bizNo+v.team).toLowerCase().includes(q));}
   const s=_sort.vendors;list.sort((a,b)=>{let r=0;if(s.k==='name')r=a.name.localeCompare(b.name,'ko');else if(s.k==='amount')r=(a.avg||0)-(b.avg||0);else r=(a.cnt||0)-(b.cnt||0);return r*s.dir;});
   let h=`<div class="kpis" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))"><div class="kpi blue"><div class="lbl">거래처</div><div class="val">${VENDORS.length}곳</div></div><div class="kpi"><div class="lbl">사업자번호 보유</div><div class="val">${VENDORS.filter(v=>v.bizNo).length}곳</div></div><div class="kpi orange"><div class="lbl">다계좌 거래처</div><div class="val">${VENDORS.filter(v=>v.accounts.length>1).length}곳</div></div></div>`;
+  const _pend=canVendorAdmin()?pendingNewVendors():[];window._pendVendors=_pend;
+  if(_pend.length){h+=`<div class="card" style="border:1px solid var(--billy-blue-200);background:var(--billy-blue-50);margin-bottom:14px;padding:14px 16px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><b style="font-size:14px">🆕 신규 거래처 승인 대기</b><span class="tag tag-blue">${_pend.length}곳</span></div><div class="t-sub" style="margin-bottom:11px">아직 거래처로 등록되지 않은 입금처예요. 서류(통장사본·사업자등록증) 확인 후 <b>신규 거래처로 등록</b>하면 다음부터 자동 인식돼요.</div>${_pend.map((p,i)=>`<div class="acct-row"><div class="ab"><div class="abk">${escH(p.payee)} <span class="t-sub" style="font-weight:400">· ${p.cnt}건${p.sum?' · '+won(p.sum)+'원':''}</span></div><div class="anum num">${escH(p.bank||'-')} ${escH(p.account||'')} ${p.evidence?'<span class="tag tag-blue" style="margin-left:4px">📎 증빙</span>':''}</div></div><button class="btn btn-sm btn-primary" onclick="approveVendorForm(${i})">신규 거래처 등록</button></div>`).join('')}</div>`;}
   h+=`<div class="filters"><div class="search">${I.search}<input placeholder="거래처·사업자번호 검색" value="${escH(_q)}" oninput="onSearchInput(this)" oncompositionstart="onSearchCompStart()" oncompositionend="onSearchCompEnd(this)"></div></div>`;
   h+='<div class="card"><div class="table-wrap"><table style="--cw:'+colwVar('vendors')+'"><thead><tr>';
   h+=`<th class="rz sortable" onclick="setSort('vendors','name')">거래처${sortIcon('vendors','name')}<span class="rzh" data-rz="vendors" onclick="event.stopPropagation()"></span></th><th>사업자번호</th><th>팀</th><th>대표계좌</th><th>계좌</th><th class="sortable" style="text-align:right" onclick="setSort('vendors','cnt')">거래수${sortIcon('vendors','cnt')}</th><th class="sortable" style="text-align:right" onclick="setSort('vendors','amount')">평균금액${sortIcon('vendors','amount')}</th><th></th></tr></thead><tbody>`;
@@ -797,8 +907,12 @@ function renderVendors(){
 }
 function viewVendor(id){const v=VENDORS.find(x=>x.id===id);if(!v)return;
   const accts=v.accounts.map((a,i)=>`<div class="acct-row ${a.primary?'primary':''}"><div class="ab"><div class="abk">${escH(a.bank)} ${a.primary?'<span class="tag tag-blue" style="margin-left:4px">대표</span>':''}</div><div class="anum num">${escH(a.account)} · ${escH(a.holder)}</div></div>${a.primary?'':`<button class="btn btn-sm btn-line" onclick="setPrimary('${v.id}',${i})">대표 지정</button>`}</div>`).join('');
-  modal('거래처 — '+v.name,'',`<div class="dl"><dt>사업자번호</dt><dd class="num">${v.bizNo?escH(v.bizNo):'없음'}</dd><dt>팀</dt><dd>${escH(normalizeTeam(v.team)||'-')}</dd><dt>이메일</dt><dd>${escH(v.email||'-')}</dd><dt>거래</dt><dd>${v.cnt}회 · 평균 ${won(v.avg)}${v.unit!=='원'?' '+v.unit:'원'} · 최대 ${won(v.max)}</dd><dt>최근거래</dt><dd>${escH(v.lastDate||'-')}</dd></div><div class="hr"></div><div style="font-weight:700;font-size:13px;margin-bottom:9px">등록 계좌 ${v.accounts.length}개</div>${accts}<div class="t-sub" style="margin-top:6px">※ 신규 이체 요청 시 대표계좌와 다른 계좌면 ⚠️ 계좌변경으로 표시됩니다.</div>`,`<button class="btn btn-secondary" onclick="closeModal()">닫기</button><button class="btn btn-primary" onclick="newFromVendor('${v.id}')">이 거래처로 이체 요청</button>`);
+  modal('거래처 — '+v.name,'',`<div class="dl"><dt>사업자번호</dt><dd class="num">${v.bizNo?escH(v.bizNo):'없음'}</dd><dt>팀</dt><dd>${escH(normalizeTeam(v.team)||'-')}</dd><dt>이메일</dt><dd>${escH(v.email||'-')}</dd><dt>거래</dt><dd>${v.cnt}회 · 평균 ${won(v.avg)}${v.unit!=='원'?' '+v.unit:'원'} · 최대 ${won(v.max)}</dd><dt>최근거래</dt><dd>${escH(v.lastDate||'-')}</dd></div><div class="hr"></div><div style="font-weight:700;font-size:13px;margin-bottom:9px">등록 계좌 ${v.accounts.length}개</div>${accts}<div class="t-sub" style="margin-top:6px">※ 신규 이체 요청 시 대표계좌와 다른 계좌면 ⚠️ 계좌변경으로 표시됩니다.</div><div class="hr"></div><div style="font-weight:700;font-size:13px;margin-bottom:9px">📎 거래처 서류 ${(v.bankbookUrl&&v.bizregUrl)?'<span class="tag tag-blue" style="margin-left:4px">등록완료</span>':'<span class="tag tag-gray" style="margin-left:4px">미비</span>'}</div><div class="dl"><dt>통장 사본</dt><dd>${v.bankbookUrl?`<a href="${escH(v.bankbookUrl)}" target="_blank" rel="noopener" style="color:var(--billy-blue);text-decoration:underline">링크 ↗</a>`:'<span class="t-sub">미등록</span>'}</dd><dt>사업자등록증</dt><dd>${v.bizregUrl?`<a href="${escH(v.bizregUrl)}" target="_blank" rel="noopener" style="color:var(--billy-blue);text-decoration:underline">링크 ↗</a>`:'<span class="t-sub">미등록</span>'}</dd></div>${canApprove()?`<button class="btn btn-sm btn-line" style="margin-top:9px" onclick="editVendorDocs('${v.id}')">서류 링크 등록/수정</button>`:''}<div class="t-sub" style="margin-top:7px">한 번 등록하면 이 거래처의 모든 이체에 자동으로 연결돼요.</div>`,`<button class="btn btn-secondary" onclick="closeModal()">닫기</button><button class="btn btn-primary" onclick="newFromVendor('${v.id}')">이 거래처로 이체 요청</button>`);
 }
+function editVendorDocs(id){const v=VENDORS.find(x=>x.id===id);if(!v)return;
+  modal('거래처 서류 — '+v.name,'',`<div class="form-row"><label>통장 사본 (Dropbox 링크)</label><input class="input" id="vd_bank" value="${escH(v.bankbookUrl||'')}" placeholder="https://www.dropbox.com/..."></div><div class="form-row"><label>사업자등록증 (Dropbox 링크)</label><input class="input" id="vd_biz" value="${escH(v.bizregUrl||'')}" placeholder="https://www.dropbox.com/..."></div><div class="t-sub">한 번 등록하면 이 거래처의 모든 이체에 자동으로 연결돼요. 동일 거래처는 매번 올릴 필요 없어요.</div>`,`<button class="btn btn-secondary" onclick="viewVendor('${id}')">취소</button><button class="btn btn-primary" onclick="saveVendorDocs('${id}')">저장</button>`);
+}
+function saveVendorDocs(id){const v=VENDORS.find(x=>x.id===id);if(!v)return;const bank=val('vd_bank'),biz=val('vd_biz');sv('fin_set_vendor_docs',{p_vendor_id:id,p_bankbook:bank,p_bizreg:biz},()=>{v.bankbookUrl=bank;v.bizregUrl=biz;}).then(()=>{viewVendor(id);toast('거래처 서류를 저장했어요.','ok');});}
 function setPrimary(id,idx){const v=VENDORS.find(x=>x.id===id);if(!v)return;const acc=v.accounts[idx];sv('fin_set_primary',{p_account_id:acc&&acc.id},()=>{v.accounts.forEach((a,i)=>a.primary=(i===idx));}).then(()=>{viewVendor(id);toast('대표계좌를 변경했어요.','ok');});}
 function newFromVendor(id){const v=VENDORS.find(x=>x.id===id);if(!v)return;closeModal();const pa=v.accounts.find(a=>a.primary)||v.accounts[0];current='payout';render();openPayoutForm({payee:v.name,bank:pa?pa.bank:'',account:pa?pa.account:'',unit:v.unit});}
 function exportVendors(){loadXLSX().then(function(){const head=['거래처','사업자번호','팀','대표은행','대표계좌','계좌수','거래수','평균금액','통화','최근거래'];const data=VENDORS.map(v=>{const pa=v.accounts.find(a=>a.primary)||v.accounts[0];return [v.name,v.bizNo,v.team,pa?pa.bank:'',pa?pa.account:'',v.accounts.length,v.cnt,v.avg,v.unit,v.lastDate];});const ws=XLSX.utils.aoa_to_sheet([head].concat(data));ws['!cols']=[{wch:22},{wch:14},{wch:9},{wch:9},{wch:20},{wch:7},{wch:7},{wch:13},{wch:6},{wch:12}];const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'거래처');XLSX.writeFile(wb,'거래처목록_'+today()+'.xlsx');toast('거래처 목록 엑셀 다운로드.','ok');}).catch(()=>toast('엑셀 로드 실패','err'));}
@@ -818,7 +932,7 @@ async function loadMe(){
   if(!name)name=(email.split('@')[0]||'사용자');
   SUPA_USER={email,role,name,team,av:(name||'·').slice(0,1),rl:roleLabel(role)};ROLE=role;
 }
-function _mapPayout(r){return {id:r.id,requester:r.requester_name,team:r.team,payee:r.payee,bank:r.bank,account:r.account,amount:Number(r.amount)||0,unit:r.currency||'원',category:r.category,purpose:r.purpose,evidence:r.evidence_url,hasTax:r.has_tax,status:r.status,paidAt:r.paid_date||'',applied:(r.created_at||'').slice(0,10),wh:r.wh,fuel:r.fuel};}
+function _mapPayout(r){return {id:r.id,requester:r.requester_name,team:r.team,payee:r.payee,bank:r.bank,account:r.account,amount:Number(r.amount)||0,unit:r.currency||'원',category:r.category,purpose:r.purpose,evidence:r.evidence_url,hasTax:r.has_tax,proofType:r.proof_type||'',proofDate:r.proof_date||'',proofStatus:r.proof_status||'',proofReason:r.proof_none_reason||'',proofReceivedAt:r.proof_received_at||'',status:r.status,paidAt:r.paid_date||'',applied:(r.created_at||'').slice(0,10),wh:r.wh,fuel:r.fuel};}
 function _mapInvoice(r){return {id:r.id,requester:r.requester_name,team:r.team,saleType:r.sale_type,bizNo:r.biz_no,company:r.company,ceo:r.ceo,email:r.email,writeDate:r.write_date,itemName:r.item_name,supply:Number(r.supply)||0,tax:Number(r.vat)||0,total:Number(r.total)||0,evidence:r.evidence_url,status:r.status,applied:(r.created_at||'').slice(0,10),issuedAt:r.issued_date||''};}
 async function fetchAllRows(factory){const PAGE=1000;let from=0,all=[];for(;;){const{data,error}=await factory().range(from,from+PAGE-1);if(error)throw error;all=all.concat(data||[]);if(!data||data.length<PAGE)break;from+=PAGE;}return all;}
 async function loadData(){
@@ -831,13 +945,13 @@ async function loadData(){
     sb.from('fin_locks').select('ym')]);
   DB.payout=po.map(_mapPayout);
   DB.invoice=iv.map(_mapInvoice);
-  VENDORS.length=0;ve.forEach(v=>VENDORS.push({id:v.id,name:v.name,bizNo:v.biz_no,email:v.email,team:v.team,unit:v.unit||'원',cnt:v.tx_count||0,avg:Number(v.avg_amount)||0,max:Number(v.max_amount)||0,lastDate:v.last_date||'',accounts:(v.accounts||[]).map(a=>({id:a.id,bank:a.bank,account:a.account,holder:a.holder,primary:a.is_primary})).sort((a,b)=>(b.primary?1:0)-(a.primary?1:0))}));
+  VENDORS.length=0;ve.forEach(v=>VENDORS.push({id:v.id,name:v.name,bizNo:v.biz_no,email:v.email,team:v.team,unit:v.unit||'원',cnt:v.tx_count||0,avg:Number(v.avg_amount)||0,max:Number(v.max_amount)||0,lastDate:v.last_date||'',bankbookUrl:v.bankbook_url||'',bizregUrl:v.bizreg_url||'',accounts:(v.accounts||[]).map(a=>({id:a.id,bank:a.bank,account:a.account,holder:a.holder,primary:a.is_primary})).sort((a,b)=>(b.primary?1:0)-(a.primary?1:0))}));
   DB.templates=(rc.data||[]).map(t=>({id:t.id,payee:t.payee,bank:t.bank,account:t.account,amount:Number(t.amount)||0,category:t.category,total:t.total,done:t.done,nextDate:t.next_date,requester:t.requester_name,team:t.team}));
   LOCKED=new Set((lo.data||[]).map(x=>x.ym));
 }
 /* 저장: 실모드=RPC→새로고침 / 데모=mockFn */
 function sv(rpc,args,mockFn){if(!IS_SUPA){if(mockFn)mockFn();return Promise.resolve(true);}return sb.rpc(rpc,args).then(({data,error})=>{if(error){toast(error.message||'오류가 났어요','err');throw error;}return loadData();});}
-function payoutPayload(r,recurTotal){return {payee:r.payee,bank:r.bank,account:r.account,amount:r.amount,unit:r.unit,category:r.category,purpose:r.purpose,evidence:r.evidence||'',hasTax:!!r.hasTax,wh:r.wh||null,fuel:r.fuel||null,requester_name:ME().name,team:ME().team,recurTotal:recurTotal||0};}
+function payoutPayload(r,recurTotal){return {payee:r.payee,bank:r.bank,account:r.account,amount:r.amount,unit:r.unit,category:r.category,purpose:r.purpose,evidence:r.evidence||'',hasTax:!!r.hasTax,proofType:r.proofType||'',proofDate:r.proofDate||'',proofStatus:r.proofStatus||'',proofReason:r.proofReason||'',wh:r.wh||null,fuel:r.fuel||null,requester_name:ME().name,team:ME().team,recurTotal:recurTotal||0};}
 function invoicePayload(r){return {company:r.company,bizNo:r.bizNo,ceo:r.ceo,email:r.email,saleType:r.saleType,writeDate:r.writeDate,itemName:r.itemName,supply:r.supply,vat:r.tax,total:r.total,evidence:r.evidence||'',requester_name:ME().name,team:ME().team};}
 /* ── 로그인 (이메일 OTP) ── */
 let _loginEmail='';
