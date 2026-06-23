@@ -109,6 +109,14 @@ th.rz{position:relative;width:var(--cw,300px);min-width:120px}.rzh{position:abso
 .badge-paid{background:#e8f6ee;color:#1f9d57}
 .badge-rejected{background:#fdecec;color:var(--sys-red)}
 .badge-canceled{background:var(--gray-100);color:var(--gray)}
+button.badge{border:none;cursor:pointer;font-family:inherit}
+button.badge:hover{filter:brightness(.96)}
+.badge .caret{font-size:9px;opacity:.6;margin-left:1px}
+.statusmenu{position:fixed;z-index:120;background:#fff;border:1px solid var(--gray-200);border-radius:12px;box-shadow:var(--sh-l);padding:6px;display:flex;flex-direction:column;gap:2px;min-width:158px}
+.statusopt{display:flex;align-items:center;gap:8px;padding:7px 9px;border:none;background:none;cursor:pointer;border-radius:8px;text-align:left;font-size:13px;width:100%}
+.statusopt:hover{background:var(--gray-100)}
+.statusopt.cur{background:var(--billy-blue-50)}
+.statusbackdrop{position:fixed;inset:0;z-index:115;background:transparent}
 .tag{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:6px;font-size:11.5px;font-weight:700;white-space:nowrap}
 .tag-gray{background:var(--gray-100);color:var(--gray-600)}
 .tag-blue{background:var(--billy-blue-50);color:var(--billy-blue)}
@@ -608,7 +616,7 @@ function renderPayout(){
     h+=`<td class="mhide">${escH(r.bank||'-')}<div class="t-sub num">${escH(r.account||'')}</div></td>`;
     h+=`<td style="text-align:right"><span class="amt">${won(r.amount)}</span>${r.unit!=='원'?' <span class="t-sub">'+r.unit+'</span>':''}</td>`;
     h+=`<td class="mhide" style="max-width:175px;white-space:normal">${flags.length?`<span class="flagwrap" onclick="event.stopPropagation();anomalyDetail('${r.id}')" title="클릭하면 감지 근거 보기">${flags.map(flagHtml).join('')}</span>`:''}${isBig(r)?(flags.length?' ':'')+'<span class="tag tag-blue">🔺 고액</span>':(flags.length?'':'<span class="t-sub">–</span>')}</td>`;
-    h+=`<td><span class="badge ${st[1]}">${st[0]}</span></td>`;
+    h+=`<td>${mineApprove?`<button class="badge ${st[1]}" onclick="event.stopPropagation();openStatusMenu('${r.id}',event)" title="클릭해서 상태 변경">${st[0]}<span class="caret">▼</span></button>`:`<span class="badge ${st[1]}">${st[0]}</span>`}</td>`;
     h+='<td><div class="rowact">';
     h+=`<button class="iconbtn" title="은행 이체 엑셀" onclick="event.stopPropagation();exportPayoutOne('${r.id}')">${I.download}</button>`;
     h+=`<button class="iconbtn" title="복제" onclick="event.stopPropagation();clonePayout('${r.id}')">${I.copy}</button>`;
@@ -737,6 +745,25 @@ function proofDetailHtml(r){
 }
 function markProof(id,received){sv('fin_mark_proof',{p_id:id,p_received:!!received},()=>{const r=DB.payout.find(x=>x.id===id);if(r){r.proofStatus=received?'수취완료':'받을예정';r.proofReceivedAt=received?today():'';}}).then(()=>{const o=document.getElementById('ov');if(o)o.remove();render();toast(received?'증빙 수취완료로 표시했어요.':'받을예정으로 되돌렸어요.','ok');});}
 function decidePayout(id,status){sv('fin_decide_payout',{p_id:id,p_status:status,p_reason:''},()=>{const r=DB.payout.find(x=>x.id===id);if(r){r.status=status;if(status==='paid')r.paidAt=today();}}).then(()=>{closeModal();render();toast(status==='paid'?'지급완료로 표시했어요.':'반려했어요.',status==='rejected'?'err':'ok');});}
+/* 상태 인라인 변경 — 상태 배지 클릭 → 옵션 선택(재무만, 자유 전환) */
+function closeStatusMenu(){['statusMenu','statusBackdrop'].forEach(i=>{const e=document.getElementById(i);if(e)e.remove();});}
+function openStatusMenu(id,ev){
+  ev.stopPropagation();closeStatusMenu();
+  const r=DB.payout.find(x=>x.id===id);if(!r)return;
+  const opts=[['requested','지급대기'],['paid','지급완료'],['rejected','반려'],['canceled','취소']];
+  const m=document.createElement('div');m.className='statusmenu';m.id='statusMenu';
+  m.innerHTML=opts.map(([k,label])=>`<button class="statusopt ${r.status===k?'cur':''}" onclick="setPayoutStatus('${id}','${k}')"><span class="badge ${PSTATUS[k][1]}">${label}</span>${r.status===k?'<span class="t-sub" style="margin-left:auto">현재</span>':''}</button>`).join('');
+  document.body.appendChild(m);
+  const mw=170,mh=opts.length*40+14;let x=ev.clientX,y=ev.clientY+8;
+  x=Math.min(x,window.innerWidth-mw-8);y=Math.min(y,window.innerHeight-mh-8);
+  m.style.left=Math.max(8,x)+'px';m.style.top=Math.max(8,y)+'px';
+  const bd=document.createElement('div');bd.className='statusbackdrop';bd.id='statusBackdrop';bd.onclick=closeStatusMenu;document.body.appendChild(bd);
+}
+function setPayoutStatus(id,status){
+  closeStatusMenu();
+  const r=DB.payout.find(x=>x.id===id);if(!r||r.status===status)return;
+  sv('fin_set_payout_status',{p_id:id,p_status:status},()=>{r.status=status;r.paidAt=status==='paid'?(r.paidAt||today()):'';}).then(()=>{render();toast('상태를 '+PSTATUS[status][0]+'(으)로 바꿨어요.','ok');});
+}
 function batchPayout(status){const ss=DB.payout.filter(r=>_sel.has(r.id)&&r.status==='requested');if(IS_SUPA){Promise.all(ss.map(r=>sb.rpc('fin_decide_payout',{p_id:r.id,p_status:status,p_reason:''}))).then(()=>loadData()).then(()=>{_sel=new Set();render();toast(ss.length+'건 처리.','ok');}).catch(()=>toast('일부 처리 실패','err'));}else{ss.forEach(r=>{r.status='paid';r.paidAt=today();});_sel=new Set();render();toast(ss.length+'건 지급완료 표시.','ok');}}
 function exportPayoutRows(ss,fname){loadXLSX().then(function(){const head=['입금은행','입금계좌번호','예금주','이체금액','통화','적요(통장표시)','분류'];const data=ss.map(r=>[r.bank,r.account,r.payee,r.amount,r.unit,(r.purpose||'').slice(0,7),r.category]);const ws=XLSX.utils.aoa_to_sheet([head].concat(data));ws['!cols']=[{wch:10},{wch:20},{wch:18},{wch:13},{wch:7},{wch:14},{wch:12}];const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'이체요청');XLSX.writeFile(wb,fname);toast(ss.length+'건 엑셀 다운로드.','ok');}).catch(()=>toast('엑셀 로드 실패','err'));}
 function exportPayout(){const ss=DB.payout.filter(r=>_sel.has(r.id));if(!ss.length){toast('항목을 선택하세요.','err');return;}exportPayoutRows(ss,'이체요청_선택_'+today()+'.xlsx');}
