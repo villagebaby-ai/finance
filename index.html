@@ -319,8 +319,8 @@ const ROLE_DEF={
 let ROLE='finance';
 const ME=()=>(IS_SUPA&&SUPA_USER)?SUPA_USER:ROLE_DEF[ROLE];
 const canViewAll=()=>['viewer','finance','exec'].includes(ROLE);
-const canApprove=()=>ROLE==='finance'; // 처리(지급완료/반려)는 데모 재무만
-const canVendorAdmin=()=>['finance','exec'].includes(ROLE); // 신규 거래처 승인·등록 = 데모 재무·데모 대표
+const canApprove=()=>['finance','exec','viewer'].includes(ROLE); // 처리(지급완료/반려/상태변경 등) = 데모 재무·데모 대표·데모 조회(admin 3인)
+const canVendorAdmin=()=>['finance','exec','viewer'].includes(ROLE); // 신규 거래처 승인·등록 = admin 3인
 const THRESHOLD_NOTIFY=THRESHOLD; // 1천만+ → 데모 대표 대표 메일 통지(승인 아님)
 const isBig=r=>!!(r&&r.unit==='원'&&(Number(r.amount)||0)>=THRESHOLD);
 const TEAMS_ALL=['Brand','Product','Commerce','M&E','Biz','GA'];
