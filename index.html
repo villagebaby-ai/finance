@@ -283,6 +283,7 @@ const I={
   m_vendor:'<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-3"/><path d="M9 9v.01M9 12v.01M9 15v.01"/></svg>',
   m_alert:'<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>',
   m_proof:'<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path d="M6 2h9l5 5v15l-2.5-1.5L15 22l-2.5-1.5L10 22l-2.5-1.5L5 22V4a2 2 0 0 1 1-2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>',
+  m_coupon:'<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4z"/><path d="M14 6v12"/></svg>',
 };
 /* ---------- 헬퍼 ---------- */
 function escH(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -331,6 +332,13 @@ const PROOF_LABEL={'세금계산서':'세금계산서 (매입)','현금영수증
 function needsProof(r){return !!(r&&PROOF_ADEQ.has(r.proofType)&&r.proofStatus!=='수취완료'&&r.status!=='canceled'&&r.status!=='rejected');}
 function proofDeadline(d){if(!d)return null;const x=new Date(d);return new Date(x.getFullYear(),x.getMonth()+1,10);} // 작성일 기준 익월 10일
 function proofOverdue(r){if(!needsProof(r))return false;const dl=proofDeadline(r.proofDate);return !!dl&&new Date(today())>dl;}
+/* ── 빌리쇼핑 쿠폰 ── */
+const COUPON_AMOUNT=30000;
+const COUPON_LINK='https://bit.ly/3S1QlI9';
+const CSTATUS={issued:['발급완료','badge-paid'],pending:['승인 보류','badge-pending'],rejected:['반려','badge-rejected'],void:['무효','badge-canceled']};
+function normPhone(s){let d=String(s||'').replace(/[^0-9]/g,'');if(d.slice(0,2)==='82')d='0'+d.slice(2);return d;}
+function fmtPhone(s){const d=normPhone(s);if(d.length===11)return d.replace(/(\d{3})(\d{4})(\d{4})/,'$1-$2-$3');if(d.length===10)return d.replace(/(\d{3})(\d{3})(\d{4})/,'$1-$2-$3');return s||'';}
+function couponMsg(code){return "안녕하세요. 엄빠의 삶을 편하게 만드는 베이비빌리예요!\n\n베이비빌리 앱 내 '빌리쇼핑'에서 이용하실 수 있는 3만원 이용권을 보내드려요. \n장바구니에 3만원 이상 아이템을 담은 후 3만원 전액 할인받고 구매가 가능하신 상품권이니, 유용히 사용하시길 바랍니다!\n\n▶ 마이페이지 > 빌리쇼핑 > 쿠폰 > 쿠폰번호입력\n- "+COUPON_LINK+"\n\n▶ 쿠폰 번호:\n- "+code+"\n\n▶ 쿠폰 주의사항:\n- 쿠폰 번호는 최초 1회만 등록만 가능하오니, 사용하실 계정에서만 등록 부탁드립니다. \n- 쿠폰의 발급 및 사용 기한은 발급일로부터 한 달 입니다.\n- 추후 반품 및 환불 등으로 구매 취소 시 쿠폰은 회수되는 점 안내드립니다. \n\n그럼 오늘도 행복한 하루되시길 바랍니다!\n\n베이비빌리 드림";}
 function approverFor(requester,amount){const big=(Number(amount)||0)>=THRESHOLD;if(requester==='데모 재무'||big)return requester==='데모 대표'?'데모 재무':'데모 대표';return '데모 재무';}
 /* ===================== 거래처(데모) ===================== */
 const VENDORS=[
@@ -370,6 +378,14 @@ const DB={payout:[],invoice:[]};
 })();
 function payDup(r){return r.payee+'|'+digits(r.account)+'|'+r.amount;}
 DB.templates=[]; // 정기/반복 이체 템플릿
+/* ── 쿠폰(데모) ── */
+DB.coupons=[];DB.couponCodes=[];let COUPON_STOCK=0;
+(function couponSeed(){
+  ['8VCADK8D','QK7M2P9X','7HN4RT6B','ZC5W8LK3','9YB2DM4Q','P6XA3VN7','KJ8T5RW2','3QF9CH6D'].forEach(c=>DB.couponCodes.push({code:c,amount:30000,status:'available'}));
+  const c0=DB.couponCodes.shift();c0.status='issued';
+  DB.coupons.push({id:uid('c'),requester:'데모 팀장C',requesterEmail:'sm.cho@villagebaby.kr',team:'Commerce',name:'김하늘',phone:'010-1234-5678',phoneNorm:'01012345678',amount:30000,code:c0.code,status:'issued',hold:'',isOverride:false,memo:'0-6개월 신생아맘 인터뷰',createdAt:addDays(-3)});
+})();
+function couponStock(){return IS_SUPA?COUPON_STOCK:DB.couponCodes.filter(c=>c.status==='available').length;}
 let LOCKED=new Set(); // 마감된 'YYYY-MM'
 const WH_RATES={'사업소득 (3.3%)':0.033,'기타소득 (8.8%)':0.088};
 function isLockedMonth(d){return !!d&&LOCKED.has(String(d).slice(0,7));}
@@ -508,8 +524,9 @@ const PAGES={
   vendors:{t:'거래처 관리',d:'사업자번호로 통합된 거래처와 계좌를 관리합니다.',render:renderVendors},
   anomaly:{t:'이상거래 검토',d:'이상 신호가 감지된 이체를 모아서 검토합니다. 항목을 클릭하면 감지 근거(중복 내역·계좌·과거 통계)가 나와요.',render:renderAnomalies},
   proof:{t:'증빙 미수취',d:'세금계산서·현금영수증·계산서를 "받을 예정"으로 등록한 건을 추적합니다. 홈택스에서 확인되면 수취완료를 눌러주세요. (발행기한 = 작성일 기준 익월 10일)',render:renderProof},
+  coupon:{t:'빌리쇼핑 쿠폰',d:'고객 미팅 감사용 빌리쇼핑 3만원 쿠폰을 발급합니다. 신청하면 쿠폰번호가 바로 나오고, 고객에게 보낼 전달 메시지를 복사할 수 있어요.',render:renderCoupon},
 };
-const NAV=[['dashboard','대시보드','m_dash'],['payout','이체 요청','m_money'],['invoice','세금계산서 발행','m_doc'],['proof','증빙 미수취','m_proof'],['anomaly','이상거래 검토','m_alert'],['vendors','거래처 관리','m_vendor']];
+const NAV=[['dashboard','대시보드','m_dash'],['payout','이체 요청','m_money'],['invoice','세금계산서 발행','m_doc'],['coupon','빌리쇼핑 쿠폰','m_coupon'],['proof','증빙 미수취','m_proof'],['anomaly','이상거래 검토','m_alert'],['vendors','거래처 관리','m_vendor']];
 function buildNav(){
   let h='<div class="nav-label">재무 업무</div>';let mh='';
   NAV.forEach(([k,label,ic])=>{
@@ -517,6 +534,7 @@ function buildNav(){
     let dot='';
     if(canApprove()&&(k==='payout'||k==='invoice')){const arr=k==='payout'?DB.payout:DB.invoice;const c=arr.filter(r=>r.status==='requested').length;if(c)dot=`<span class="dot">${c}</span>`;}
     if(canViewAll()&&k==='proof'){const c=DB.payout.filter(r=>r.status==='paid'&&proofOverdue(r)).length;if(c)dot=`<span class="dot">${c}</span>`;}
+    if(canApprove()&&k==='coupon'){const c=DB.coupons.filter(r=>r.status==='pending').length;if(c)dot=`<span class="dot">${c}</span>`;}
     h+=`<div class="nav-item${current===k?' active':''}" onclick="go('${k}')">${I[ic]}<span>${label}</span>${dot}</div>`;
     mh+=`<button class="mnav-item${current===k?' active':''}" onclick="go('${k}')">${I[ic]}<span>${escH(label.split(' ')[0])}</span>${dot}</button>`;
   });
@@ -533,6 +551,7 @@ function render(){
   if(current==='payout')act=`<button class="btn btn-line btn-sm" onclick="openTemplates()">🔁 정기</button><button class="btn btn-line btn-sm" onclick="openWHForm()">3.3% 지급</button><button class="btn btn-line btn-sm" onclick="openFuelForm()">${I.car}<span>유류비</span></button><button class="btn btn-line btn-sm" onclick="openBulkForm()">📥 일괄</button><button class="btn btn-primary" onclick="openPayoutForm()">${I.plus}<span>새 이체 요청</span></button>`;
   if(current==='invoice')act=`<button class="btn btn-primary" onclick="openInvoiceForm()">${I.plus}<span>새 발행 요청</span></button>`;
   if(current==='vendors')act=`<button class="btn btn-line" onclick="exportVendors()">${I.download}<span>거래처 엑셀</span></button>`;
+  if(current==='coupon')act=`${canApprove()?`<button class="btn btn-line btn-sm" onclick="openCouponCodeForm()">${I.plus}<span>코드 추가</span></button>`:''}<button class="btn btn-primary" onclick="openCouponForm()">${I.plus}<span>새 쿠폰 발급</span></button>`;
   document.getElementById('pgActions').innerHTML=act;
   document.getElementById('meAv').textContent=ME().av;document.getElementById('meNm').textContent=ME().name;document.getElementById('meRl').textContent=ME().rl;
   const _rs=document.getElementById('roleSel');if(_rs)_rs.value=ROLE;
@@ -943,6 +962,91 @@ function saveVendorDocs(id){const v=VENDORS.find(x=>x.id===id);if(!v)return;cons
 function setPrimary(id,idx){const v=VENDORS.find(x=>x.id===id);if(!v)return;const acc=v.accounts[idx];sv('fin_set_primary',{p_account_id:acc&&acc.id},()=>{v.accounts.forEach((a,i)=>a.primary=(i===idx));}).then(()=>{viewVendor(id);toast('대표계좌를 변경했어요.','ok');});}
 function newFromVendor(id){const v=VENDORS.find(x=>x.id===id);if(!v)return;closeModal();const pa=v.accounts.find(a=>a.primary)||v.accounts[0];current='payout';render();openPayoutForm({payee:v.name,bank:pa?pa.bank:'',account:pa?pa.account:'',unit:v.unit});}
 function exportVendors(){loadXLSX().then(function(){const head=['거래처','사업자번호','팀','대표은행','대표계좌','계좌수','거래수','평균금액','통화','최근거래'];const data=VENDORS.map(v=>{const pa=v.accounts.find(a=>a.primary)||v.accounts[0];return [v.name,v.bizNo,v.team,pa?pa.bank:'',pa?pa.account:'',v.accounts.length,v.cnt,v.avg,v.unit,v.lastDate];});const ws=XLSX.utils.aoa_to_sheet([head].concat(data));ws['!cols']=[{wch:22},{wch:14},{wch:9},{wch:9},{wch:20},{wch:7},{wch:7},{wch:13},{wch:6},{wch:12}];const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'거래처');XLSX.writeFile(wb,'거래처목록_'+today()+'.xlsx');toast('거래처 목록 엑셀 다운로드.','ok');}).catch(()=>toast('엑셀 로드 실패','err'));}
+/* ===================== 빌리쇼핑 쿠폰 ===================== */
+function renderCoupon(){
+  const c=document.getElementById('content');const admin=canApprove();
+  let list=(canViewAll()?DB.coupons:DB.coupons.filter(r=>r.requester===ME().name)).slice().sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+  if(_q){const q=_q.toLowerCase();list=list.filter(r=>((r.name||'')+(r.phone||'')+(r.code||'')+(r.requester||'')).toLowerCase().includes(q));}
+  const mineMonth=DB.coupons.filter(r=>r.requester===ME().name&&(r.status==='issued'||r.status==='pending')&&String(r.createdAt||'').slice(0,7)===today().slice(0,7)).length;
+  const pend=DB.coupons.filter(r=>r.status==='pending');const stock=couponStock();
+  let h=`<div class="sumbar"><div class="sb-seg"><span>내 이번달 발급</span> <b>${mineMonth}건</b> <span class="t-sub">· 3회째부터 승인</span></div>${admin?`<div class="sb-seg"><span>코드 재고</span> <b style="${stock<3?'color:var(--sys-red)':''}">${stock}장</b></div><div class="sb-seg"><span>승인 보류</span> <b>${pend.length}건</b></div>`:''}</div>`;
+  if(admin&&stock<3)h+=`<div class="todo warn" style="margin-bottom:12px">⚠️ 쿠폰 코드 재고가 <b>${stock}장</b> 남았어요. 우측 상단 "코드 추가"로 채워주세요.</div>`;
+  if(admin&&pend.length){
+    h+=`<div class="card" style="border:1px solid var(--billy-blue-200);background:var(--billy-blue-50);margin-bottom:14px;padding:14px 16px"><div style="font-weight:800;font-size:14px;margin-bottom:9px">⏳ 승인 보류 ${pend.length}건</div>`;
+    pend.forEach(r=>{h+=`<div class="acct-row"><div class="ab"><div class="abk">${escH(r.name)} · ${escH(fmtPhone(r.phone))}</div><div class="anum">${escH(r.requester||'-')} 신청 · ${escH(r.hold||'')}${r.memo?' · '+escH(r.memo):''}</div></div><div style="display:flex;gap:6px"><button class="btn btn-sm btn-primary" onclick="couponDecide('${r.id}','issued')">발급 승인</button><button class="btn btn-sm btn-danger" onclick="couponReject('${r.id}')">반려</button></div></div>`;});
+    h+='</div>';
+  }
+  h+=`<div class="filters"><div class="search">${I.search}<input placeholder="수령인·휴대폰·코드 검색" value="${escH(_q)}" oninput="onSearchInput(this)" oncompositionstart="onSearchCompStart()" oncompositionend="onSearchCompEnd(this)"></div></div>`;
+  if(!list.length){h+=`<div class="card"><div class="empty">${I.m_coupon}<div>발급 이력이 없어요. "새 쿠폰 발급"으로 시작하세요.</div></div></div>`;c.innerHTML=h;return;}
+  h+='<div class="card"><div class="table-wrap"><table class="cardtbl"><thead><tr><th>수령인</th><th class="mhide">휴대폰</th><th>쿠폰번호</th><th class="mhide">신청인</th><th class="mhide">신청일</th><th>상태</th><th></th></tr></thead><tbody>';
+  list.forEach(r=>{const st=CSTATUS[r.status]||['?',''];const showFull=admin||r.requester===ME().name;
+    const codeCell=r.code?(showFull?`<span class="num" style="font-weight:700;letter-spacing:.5px">${escH(r.code)}</span>`:`<span class="num t-sub">••••${escH(r.code.slice(-4))}</span>`):'<span class="t-sub">–</span>';
+    h+=`<tr><td class="nmcell"><div class="t-name">${escH(r.name)}</div>${r.isOverride?'<span class="tag tag-blue">강제발급</span>':''}${r.memo?`<div class="t-sub">${escH(r.memo)}</div>`:''}</td><td class="mhide t-sub num">${escH(fmtPhone(r.phone))}</td><td>${codeCell}</td><td class="mhide t-sub nmcell">${r.requester?nameWrap(r.requester):'-'}</td><td class="mhide t-sub num">${escH(String(r.createdAt||'').slice(0,10))}</td><td><span class="badge ${st[1]}">${st[0]}</span></td><td><div class="rowact">${r.status==='issued'&&r.code&&showFull?`<button class="btn btn-sm btn-primary" onclick="couponMsgModal('${r.id}')">메시지 복사</button>`:''}${admin&&r.status==='issued'?`<button class="iconbtn" title="무효 처리" onclick="couponVoid('${r.id}')">${I.trash}</button>`:''}</div></td></tr>`;
+  });
+  h+='</tbody></table></div></div>';c.innerHTML=h;
+}
+function openCouponForm(){
+  const admin=canApprove();
+  modal('새 빌리쇼핑 쿠폰 발급','',`<div class="policy" style="background:var(--billy-blue-50);border-color:var(--billy-blue-100)"><b style="color:var(--billy-blue)">🎁 3만원 빌리쇼핑 쿠폰</b> — 신청하면 쿠폰번호가 바로 나오고, 전달 메시지를 복사해 고객에게 보내면 돼요.<br><span class="t-sub">· 같은 휴대폰에 이미 발급된 이력이 있으면 발급되지 않아요.<br>· 이번 달 3회째부터는 관리자 승인 후 발급돼요.</span></div>
+    <div class="f2"><div class="form-row"><label>수령인 이름 <span class="req">*</span></label><input class="input" id="cp_name" placeholder="고객 이름"></div><div class="form-row"><label>휴대폰 <span class="req">*</span><span class="hint">- 있어도/없어도 OK</span></label><input class="input num" id="cp_phone" placeholder="010-0000-0000" oninput="couponDupHint()"></div></div>
+    <div class="form-row"><label>메모 <span class="hint">선택 · 내부 기록용</span></label><input class="input" id="cp_memo" placeholder="예: 0-6개월 신생아맘 인터뷰"></div>
+    ${admin?`<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--gray-700);margin-top:4px"><input type="checkbox" class="cbx" id="cp_override" onchange="var n=document.getElementById('cp_ovBox');n.style.display=this.checked?'block':'none'">🔓 중복 무시하고 강제 발급 (관리자)</label><div class="form-row" id="cp_ovBox" style="display:none;margin-top:8px"><label>강제 발급 사유 <span class="req">*</span></label><input class="input" id="cp_ovReason" placeholder="예: 재참여 인터뷰이 (작년 참여)"></div>`:''}
+    <div id="cp_anom" style="margin-top:8px"></div>
+  `,`<button class="btn btn-secondary" onclick="closeModal()">취소</button><button class="btn btn-primary" onclick="submitCoupon()">쿠폰 발급</button>`);
+}
+function couponDupHint(){const el=document.getElementById('cp_anom');if(!el)return;const norm=normPhone(val('cp_phone'));if(norm.length<10){el.innerHTML='';return;}const dup=DB.coupons.find(r=>r.phoneNorm===norm&&r.status==='issued');el.innerHTML=dup?`<div class="t-sub" style="color:var(--sys-red)">⚠️ 이 번호는 이미 발급 이력이 있어요 (${escH(dup.createdAt||'')}). 강제발급이 아니면 발급되지 않아요.</div>`:`<div class="t-sub" style="color:#1f9d57">✓ 발급 가능한 번호예요.</div>`;}
+function submitCoupon(){
+  const name=val('cp_name'),phone=val('cp_phone'),memo=val('cp_memo');const norm=normPhone(phone);
+  if(!name){toast('수령인 이름을 입력해 주세요.','err');return;}
+  if(norm.length<10){toast('휴대폰번호를 정확히 입력해 주세요.','err');return;}
+  const ovEl=document.getElementById('cp_override');const override=canApprove()&&ovEl&&ovEl.checked;const ovReason=override?val('cp_ovReason'):'';
+  if(override&&!ovReason){toast('강제 발급 사유를 입력해 주세요.','err');return;}
+  const payload={name,phone,memo,override,overrideReason:ovReason,requester_name:ME().name,team:ME().team};
+  if(IS_SUPA){sb.rpc('fin_coupon_request',{p:payload}).then(({data,error})=>{if(error){toast(error.message||'발급 중 오류','err');return;}loadData().then(()=>{closeModal();render();couponResult(data);});});}
+  else{const data=mockCouponRequest(payload);if(data.error){toast(data.error,'err');return;}closeModal();render();couponResult(data);}
+}
+function mockCouponRequest(p){
+  const norm=normPhone(p.phone);
+  if(!p.override&&DB.coupons.some(r=>r.phoneNorm===norm&&r.status==='issued'))return {error:'이미 쿠폰이 발급된 번호입니다 (휴대폰 기준 1인 1회).'};
+  const monthCnt=DB.coupons.filter(r=>r.requester===ME().name&&(r.status==='issued'||r.status==='pending')&&String(r.createdAt||'').slice(0,7)===today().slice(0,7)).length;
+  let status='issued',hold='',code='';
+  if(!p.override&&monthCnt>=2){status='pending';hold='월 3회 초과 — 관리자 승인 필요';}
+  else{const av=DB.couponCodes.find(x=>x.status==='available');if(!av){status='pending';hold='코드 재고 없음 — 관리자 추가 후 발급';}else{av.status='issued';code=av.code;}}
+  const rec={id:uid('c'),requester:ME().name,requesterEmail:(ME().email||''),team:ME().team,name:p.name,phone:p.phone,phoneNorm:norm,amount:30000,code:code,status:status,hold:hold,isOverride:!!p.override,memo:p.memo||'',createdAt:today()};
+  DB.coupons.unshift(rec);return {id:rec.id,status:status,code:code,hold:hold};
+}
+function couponResult(data){
+  if(data.status==='issued')couponSuccessModal(data.code);
+  else modal('⏳ 승인 보류','',`<div style="text-align:center;padding:8px 0"><div style="font-size:40px">⏳</div><div style="font-weight:800;font-size:16px;margin:8px 0">즉시 발급이 보류됐어요</div><div class="t-sub" style="line-height:1.6">${escH(data.hold||'관리자 승인 후 발급됩니다.')}<br>관리자(데모 재무·정윤·데모 조회) 승인 후 쿠폰번호가 나와요.</div></div>`,`<button class="btn btn-primary" onclick="closeModal()">확인</button>`);
+}
+function couponSuccessModal(code){
+  const msg=couponMsg(code);
+  modal('🎁 쿠폰 발급 완료','',`<div style="text-align:center;margin-bottom:14px"><div class="t-sub">쿠폰 번호</div><div style="font-size:26px;font-weight:800;letter-spacing:2px;color:var(--billy-blue);margin:4px 0">${escH(code)}</div></div>
+    <div style="font-weight:700;font-size:12.5px;margin-bottom:6px">📨 고객 전달 메시지 (복사해서 보내세요)</div>
+    <textarea id="cp_msg" readonly onclick="this.select()" style="width:100%;min-height:236px;font-size:12.5px;line-height:1.6;border:1px solid var(--gray-200);border-radius:var(--r-md);padding:12px;background:#f8f9fb;color:var(--gray-800);resize:vertical">${escH(msg)}</textarea>`,
+    `<button class="btn btn-secondary" onclick="copyText('${escH(code)}')">번호만 복사</button><button class="btn btn-primary" onclick="copyCouponText('${escH(code)}')">📋 메시지 전체 복사</button>`);
+}
+function copyText(t){if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){toast('복사했어요.','ok');},function(){_copyFallback(t);});}else _copyFallback(t);}
+function _copyFallback(t){const ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');toast('복사했어요.','ok');}catch(e){toast('복사 실패 — 메시지를 직접 선택해 복사하세요.','err');}ta.remove();}
+function copyCouponText(code){copyText(couponMsg(code));}
+function couponMsgModal(id){const r=DB.coupons.find(x=>x.id===id);if(!r||!r.code){toast('발급된 코드가 없어요.','err');return;}couponSuccessModal(r.code);}
+function couponDecide(id,status){
+  sv('fin_coupon_decide',{p_id:id,p_status:status,p_reason:''},()=>{const r=DB.coupons.find(x=>x.id===id);if(r&&status==='issued'){const av=DB.couponCodes.find(x=>x.status==='available');if(av){av.status='issued';r.code=av.code;r.status='issued';r.hold='';}}}).then(()=>{render();if(status==='issued'){const r=DB.coupons.find(x=>x.id===id);if(r&&r.status==='issued'&&r.code)couponSuccessModal(r.code);else toast('코드 재고가 없어 발급하지 못했어요. 코드를 추가하세요.','err');}});
+}
+function couponReject(id){confirmModal('쿠폰 반려','이 신청을 반려할까요?',function(){sv('fin_coupon_decide',{p_id:id,p_status:'rejected',p_reason:''},()=>{const r=DB.coupons.find(x=>x.id===id);if(r)r.status='rejected';}).then(()=>{render();toast('반려했어요.');});});}
+function couponVoid(id){confirmModal('쿠폰 무효 처리','이미 전달된 코드는 회수되지 않아요. 기록만 무효로 표시할까요?',function(){sv('fin_coupon_decide',{p_id:id,p_status:'void',p_reason:''},()=>{const r=DB.coupons.find(x=>x.id===id);if(r)r.status='void';}).then(()=>{render();toast('무효 처리했어요.');});});}
+function openCouponCodeForm(){
+  modal('쿠폰 코드 추가 (관리자)','',`<div class="policy" style="background:var(--billy-blue-50);border-color:var(--billy-blue-100)"><b style="color:var(--billy-blue)">🔐 보안 검증된 쿠폰번호</b>를 한 줄에 하나씩 붙여넣으세요. 신청 시 위에서부터 자동 배정돼요. <span class="t-sub">(현재 재고 ${couponStock()}장)</span></div>
+    <div class="form-row"><textarea class="input" id="cc_codes" style="min-height:150px;font-family:monospace;font-size:13px;letter-spacing:.5px" placeholder="8VCADK8D&#10;QK7M2P9X&#10;7HN4RT6B"></textarea></div>
+    <div class="t-sub">중복 코드는 자동으로 걸러져요. 3만원 코드만 넣어주세요.</div>`,
+    `<button class="btn btn-secondary" onclick="closeModal()">취소</button><button class="btn btn-primary" onclick="submitCouponCodes()">코드 추가</button>`);
+}
+function submitCouponCodes(){
+  const codes=val('cc_codes').split(/\r?\n/).map(s=>s.trim().toUpperCase()).filter(Boolean);
+  if(!codes.length){toast('코드를 붙여넣어 주세요.','err');return;}
+  if(IS_SUPA){sb.rpc('fin_coupon_add_codes',{p:{codes:codes}}).then(({data,error})=>{if(error){toast(error.message||'오류','err');return;}loadData().then(()=>{closeModal();render();toast(((data&&data.added)||0)+'개 코드를 추가했어요.','ok');});});}
+  else{let added=0;codes.forEach(c=>{if(!DB.couponCodes.some(x=>x.code===c)){DB.couponCodes.push({code:c,amount:30000,status:'available'});added++;}});closeModal();render();toast(added+'개 코드를 추가했어요.','ok');}
+}
 /* ===================== 모달/토스트 ===================== */
 function modal(title,cls,body,foot){closeModal();const ov=document.createElement('div');ov.className='overlay';ov.id='ov';ov.innerHTML=`<div class="modal ${cls||''}"><div class="modal-head"><h3>${escH(title)}</h3><button class="x" onclick="closeModal()">${I.x}</button></div><div class="modal-body">${body}</div>${foot?`<div class="modal-foot">${foot}</div>`:''}</div>`;ov.addEventListener('click',e=>{if(e.target===ov)closeModal();});document.body.appendChild(ov);}
 function closeModal(){const o=document.getElementById('ov');if(o)o.remove();}
@@ -961,20 +1065,24 @@ async function loadMe(){
 }
 function _mapPayout(r){return {id:r.id,requester:r.requester_name,team:r.team,payee:r.payee,bank:r.bank,account:r.account,amount:Number(r.amount)||0,unit:r.currency||'원',category:r.category,purpose:r.purpose,evidence:r.evidence_url,hasTax:r.has_tax,proofType:r.proof_type||'',proofDate:r.proof_date||'',proofStatus:r.proof_status||'',proofReason:r.proof_none_reason||'',proofReceivedAt:r.proof_received_at||'',status:r.status,paidAt:r.paid_date||'',applied:(r.created_at||'').slice(0,10),wh:r.wh,fuel:r.fuel};}
 function _mapInvoice(r){return {id:r.id,requester:r.requester_name,team:r.team,saleType:r.sale_type,bizNo:r.biz_no,company:r.company,ceo:r.ceo,email:r.email,writeDate:r.write_date,itemName:r.item_name,supply:Number(r.supply)||0,tax:Number(r.vat)||0,total:Number(r.total)||0,evidence:r.evidence_url,status:r.status,applied:(r.created_at||'').slice(0,10),issuedAt:r.issued_date||''};}
+function _mapCoupon(r){return {id:r.id,requester:r.requester_name,requesterEmail:r.requester_email,team:r.team,name:r.recipient_name,phone:r.recipient_phone,phoneNorm:r.recipient_phone_norm,amount:Number(r.amount)||0,code:r.code||'',status:r.status,hold:r.hold_reason||'',isOverride:r.is_override,memo:r.memo||'',createdAt:(r.created_at||'').slice(0,10)};}
 async function fetchAllRows(factory){const PAGE=1000;let from=0,all=[];for(;;){const{data,error}=await factory().range(from,from+PAGE-1);if(error)throw error;all=all.concat(data||[]);if(!data||data.length<PAGE)break;from+=PAGE;}return all;}
 async function loadData(){
   if(!IS_SUPA)return;
-  const[po,iv,ve,rc,lo]=await Promise.all([
+  const[po,iv,ve,rc,lo,cp]=await Promise.all([
     fetchAllRows(()=>sb.from('fin_payouts').select('*').order('created_at',{ascending:false})),
     fetchAllRows(()=>sb.from('fin_invoices').select('*').order('created_at',{ascending:false})),
     fetchAllRows(()=>sb.from('fin_vendors').select('*, accounts:fin_vendor_accounts(*)').order('tx_count',{ascending:false})),
     sb.from('fin_recurring').select('*'),
-    sb.from('fin_locks').select('ym')]);
+    sb.from('fin_locks').select('ym'),
+    fetchAllRows(()=>sb.from('fin_coupon_issues').select('*').order('created_at',{ascending:false}))]);
   DB.payout=po.map(_mapPayout);
   DB.invoice=iv.map(_mapInvoice);
   VENDORS.length=0;ve.forEach(v=>VENDORS.push({id:v.id,name:v.name,bizNo:v.biz_no,email:v.email,team:v.team,unit:v.unit||'원',cnt:v.tx_count||0,avg:Number(v.avg_amount)||0,max:Number(v.max_amount)||0,lastDate:v.last_date||'',bankbookUrl:v.bankbook_url||'',bizregUrl:v.bizreg_url||'',accounts:(v.accounts||[]).map(a=>({id:a.id,bank:a.bank,account:a.account,holder:a.holder,primary:a.is_primary})).sort((a,b)=>(b.primary?1:0)-(a.primary?1:0))}));
   DB.templates=(rc.data||[]).map(t=>({id:t.id,payee:t.payee,bank:t.bank,account:t.account,amount:Number(t.amount)||0,category:t.category,total:t.total,done:t.done,nextDate:t.next_date,requester:t.requester_name,team:t.team}));
   LOCKED=new Set((lo.data||[]).map(x=>x.ym));
+  DB.coupons=(cp||[]).map(_mapCoupon);
+  try{const{data:stk}=await sb.rpc('fin_coupon_stock');COUPON_STOCK=Number(stk)||0;}catch(e){COUPON_STOCK=0;}
 }
 /* 저장: 실모드=RPC→새로고침 / 데모=mockFn */
 function sv(rpc,args,mockFn){if(!IS_SUPA){if(mockFn)mockFn();return Promise.resolve(true);}return sb.rpc(rpc,args).then(({data,error})=>{if(error){toast(error.message||'오류가 났어요','err');throw error;}return loadData();});}
