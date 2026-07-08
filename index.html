@@ -358,6 +358,8 @@ const VENDORS=[
   {id:'v9',name:'데모카드(법인)',team:'Biz',email:'',accounts:[{bank:'신한',account:'333-02-983634',holder:'데모카드',primary:true}],cnt:33,avg:12000000,max:35000000,lastDate:addDays(-4),unit:'원'},
 ];
 function findVendor(name){const k=String(name||'').replace(/\(주\)|주식회사|\s|㈜/g,'');return VENDORS.find(v=>v.name.replace(/\(주\)|주식회사|\s|㈜/g,'')===k);}
+const DROPBOX_FINANCE='https://www.dropbox.com/scl/fo/0qf98c1r9a0ikfauwtout/ACH4_XBPyeFgW_j4hFEpcuY?rlkey=c9s0wnw2z4zbs0hconaqfqzh8&dl=0';
+function vendorByBiz(bizNorm){bizNorm=digits(bizNorm);if(!bizNorm||bizNorm.length<10)return null;return VENDORS.find(v=>digits(v.bizNo)===bizNorm)||null;}
 /* ===================== 거래 데이터(데모) ===================== */
 const DB={payout:[],invoice:[]};
 (function seed(){
@@ -549,9 +551,9 @@ const NAV=[
   ['fuel','유류비 신청','car','일반'],
   ['invoice','세금계산서 발행','m_doc','일반'],
   ['coupon','빌리쇼핑 쿠폰','m_coupon','일반'],
+  ['vendors','거래처 관리','m_vendor','일반'],
   ['proof','증빙 미수취','m_proof','관리자'],
   ['anomaly','이상거래 검토','m_alert','관리자'],
-  ['vendors','거래처 관리','m_vendor','관리자'],
   ['banklink','이체 여부연동','m_link','관리자'],
 ];
 const FIN_LINKS=[
@@ -566,7 +568,7 @@ const FIN_LINKS=[
 function buildNav(){
   let h='';let mh='';let curGroup='';
   NAV.forEach(([k,label,ic,grp])=>{
-    if((k==='vendors'||k==='anomaly'||k==='proof'||k==='banklink')&&!canViewAll())return;
+    if((k==='anomaly'||k==='proof'||k==='banklink')&&!canViewAll())return;
     if(grp!==curGroup){curGroup=grp;h+=`<div class="nav-label">${grp==='관리자'?'관리자 전용':'재무 업무'}</div>`;}
     let dot='';
     if(canApprove()&&k==='payout'){const c=DB.payout.filter(r=>r.status==='requested'&&r.category!=='유류비').length;if(c)dot=`<span class="dot">${c}</span>`;}
@@ -585,7 +587,7 @@ function buildNav(){
 }
 function go(k){current=k;_sel=new Set();_q='';_filterOpen=false;clearFilter();render();}
 function landing(page,opts){clearFilter();opts=opts||{};if(opts.team)FILTER.teams.add(opts.team);if(opts.status)FILTER.statuses.add(opts.status);if(opts.big)FILTER.big=true;if(opts.anomaly)FILTER.anomaly=true;if(opts.payee)_q=opts.payee;current=page;_sel=new Set();_filterOpen=true;render();}
-function setRole(r){ROLE=r;_sel=new Set();clearFilter();if(current==='vendors'&&!canViewAll())current='dashboard';render();}
+function setRole(r){ROLE=r;_sel=new Set();clearFilter();if((current==='anomaly'||current==='proof'||current==='banklink')&&!canViewAll())current='dashboard';render();}
 function render(){
   const p=PAGES[current];
   document.getElementById('pgTitle').textContent=p.t;document.getElementById('pgDesc').textContent=p.d;
@@ -696,6 +698,7 @@ function openPayoutForm(seed){
   modal('새 이체 요청','wide',POLICY_HTML+`
     <div class="t-sub" style="margin:0 0 12px">신청인: <b>${escH(ME().name)}</b>${ME().team?' · '+escH(normalizeTeam(ME().team)):''} <span style="color:var(--gray)">(요청 시 자동 기록)</span></div>
     <div class="form-row"><label>거래처/예금주 <span class="req">*</span><span class="hint">검색 후 선택 시 계좌 자동입력</span></label><input class="input" id="f_payee" value="${escH(seed.payee||'')}" placeholder="거래처명" list="vlist" oninput="onPayeePick()"><datalist id="vlist">${VENDORS.map(v=>`<option value="${escH(v.name)}">`).join('')}</datalist></div>
+    <div class="form-row"><label>사업자등록번호<span class="hint">신규 여부 확인용 · 개인은 비워두세요 (- 상관없음)</span></label><input class="input num" id="f_bizno" value="${escH(seed.bizNo||'')}" placeholder="10자리" oninput="dupHint()"></div>
     <div class="f2"><div class="form-row"><label>은행 <span class="req">*</span></label><select class="input" id="f_bank">${banks}</select></div><div class="form-row"><label>계좌번호 <span class="req">*</span></label><input class="input num" id="f_account" value="${escH(seed.account||'')}" placeholder="- 없이 숫자" oninput="dupHint()"></div></div>
     <div class="f2"><div class="form-row"><label>금액 <span class="req">*</span></label><input class="input num" id="f_amount" value="${seed.amount?won(seed.amount):''}" placeholder="0" oninput="this.value=comma(this.value);dupHint()"></div><div class="form-row"><label>통화</label><select class="input" id="f_unit">${cur}</select></div></div>
     <div class="form-row"><label>분류</label><select class="input" id="f_cat">${cats}</select></div>
@@ -721,11 +724,14 @@ function proofTypeChange(){
   const L=document.getElementById('f_proofUrlLbl');if(L)L.innerHTML=(t==='명세서')?'증빙 링크 (Dropbox) <span class="req">*</span>':'증빙 링크 (Dropbox)<span class="hint">선택</span>';
   const N=document.getElementById('f_proofNoneRow');if(N)N.style.display=(t==='none')?'block':'none';
 }
-function onPayeePick(){const v=findVendor(val('f_payee'));if(v){const pa=v.accounts.find(a=>a.primary)||v.accounts[0];if(pa){document.getElementById('f_bank').value=pa.bank;document.getElementById('f_account').value=pa.account;}document.getElementById('f_unit').value=v.unit;}dupHint();}
+function onPayeePick(){const v=findVendor(val('f_payee'));if(v){const pa=v.accounts.find(a=>a.primary)||v.accounts[0];if(pa){document.getElementById('f_bank').value=pa.bank;document.getElementById('f_account').value=pa.account;}document.getElementById('f_unit').value=v.unit;var bz=document.getElementById('f_bizno');if(bz&&v.bizNo)bz.value=v.bizNo;}dupHint();}
 function dupHint(){const el=document.getElementById('f_anom');if(!el)return;const amt=numVal('f_amount');const unit=val('f_unit')||'원';const r={payee:val('f_payee'),account:val('f_account'),amount:amt,unit,category:val('f_cat'),applied:today(),requester:ME().name};if(!r.payee){el.innerHTML='';return;}const flags=scanPayout(r);const big=unit==='원'&&amt>=THRESHOLD;const vend=findVendor(r.payee);
-  const newVendorNote=(r.payee&&!vend)?`<div style="margin-top:8px;background:var(--billy-blue-50);border:1px solid var(--billy-blue-100);border-radius:var(--r-md);padding:10px 12px;font-size:12.5px;line-height:1.65;color:var(--gray-800)">🆕 <b>첫 거래처네요!</b> 추가 증빙 링크(Dropbox)에 <b>통장사본 및 사업자등록증 또는 신분증</b>을 넣어주세요. 첫 거래처의 경우 <b>기본 서류 확인 후 이체가 완료</b>됩니다.</div>`:'';
-  const docMiss=(vend&&(!vend.bankbookUrl||!vend.bizregUrl))?`<div class="t-sub" style="margin-top:6px">📎 통장사본·사업자등록증 미등록 거래처예요. 안전을 위해 거래처 관리에서 등록을 권장해요.</div>`:'';
-  el.innerHTML=(flags.length?'<div style="margin-bottom:6px">'+flags.map(flagHtml).join('')+'</div>':'')+(big?`<div class="t-sub" style="margin-top:6px">🔺 1천만원 이상 — 고액 거래건으로 기록됩니다.</div>`:'')+newVendorNote+docMiss;}
+  const bizNorm=digits(val('f_bizno'));
+  const vByBiz=bizNorm?vendorByBiz(bizNorm):null;
+  const isNew=r.payee?(bizNorm.length>=10?!vByBiz:!vend):false;
+  const newVendorNote=isNew?`<div style="margin-top:8px;background:var(--billy-blue-50);border:1px solid var(--billy-blue-100);border-radius:var(--r-md);padding:10px 12px;font-size:12.5px;line-height:1.65;color:var(--gray-800)">🆕 <b>첫 거래처네요!</b> 첫 이체가 필요한 신규 거래처는 <b>통장사본 및 사업자등록증</b>(개인은 <b>신분증 사본</b>)이 필요해요. 드랍박스 <b>Finance 폴더</b>에 저장하고 URL을 기재해 주세요.<br><a href="${DROPBOX_FINANCE}" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;color:var(--billy-blue);font-weight:700;text-decoration:underline">📁 Dropbox Finance 폴더 열기 ↗</a></div>`:'';
+  const bottomNote=isNew?`<div class="t-sub" style="margin-top:8px">📎 미등록 거래처예요. 안전을 위해 <b>거래처 관리</b>에서 거래처 서류 등록 부탁드립니다.</div>`:'';
+  el.innerHTML=(flags.length?'<div style="margin-bottom:6px">'+flags.map(flagHtml).join('')+'</div>':'')+(big?`<div class="t-sub" style="margin-top:6px">🔺 1천만원 이상 — 고액 거래건으로 기록됩니다.</div>`:'')+newVendorNote+bottomNote;}
 function submitPayout(){
   const pt=val('f_prooftype'),adeq=PROOF_ADEQ.has(pt);
   const r={id:uid('p'),requester:ME().name,team:ME().team,payee:val('f_payee'),bank:val('f_bank'),account:val('f_account'),amount:numVal('f_amount'),unit:val('f_unit')||'원',category:val('f_cat'),purpose:val('f_purpose'),evidence:val('f_evidence'),proofType:pt,proofDate:adeq?val('f_proofdate'):'',proofStatus:adeq?(val('f_proofstatus')||'받을예정'):'',proofReason:pt==='none'?val('f_proofreason'):'',proofReceivedAt:(adeq&&val('f_proofstatus')==='수취완료')?today():'',hasTax:pt==='세금계산서',status:'requested',applied:today(),paidAt:''};
@@ -754,15 +760,18 @@ function openFuelForm(){
     <div class="f2"><div class="form-row"><label>출발지 <span class="req">*</span></label><input class="input" id="x_from" placeholder="예: 사무실(역삼)"></div><div class="form-row"><label>도착지 <span class="req">*</span></label><input class="input" id="x_to" placeholder="예: 코엑스"></div></div>
     <div class="f2"><div class="form-row"><label>방문처/목적 <span class="req">*</span></label><input class="input" id="x_visit" placeholder="예: 베이비페어 거래처 미팅"></div><div class="form-row"><label>거리(km)</label><input class="input num" id="x_km" placeholder="왕복 포함" oninput="this.value=this.value.replace(/[^0-9.]/g,'')"></div></div>
     <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--gray-700);margin-bottom:13px"><input type="checkbox" class="cbx" id="x_round" checked>왕복</label>
-    <div class="form-row"><label>청구 금액(원) <span class="req">*</span><span class="hint">영수증/유류비 기준 - 네이버 기준 통행료 및 연료비 포함 (왕복 시 왕복 유류비로 기재 부탁드립니다.)</span></label><input class="input num" id="x_amount" placeholder="0" oninput="this.value=comma(this.value)"></div>
+    <div class="form-row"><label>발생 유류비(원) <span class="req">*</span><span class="hint">네이버 기준 통행료 및 연료비 포함 (왕복 시 왕복 유류비로 기재 부탁드립니다.)</span></label><input class="input num" id="x_base" placeholder="0" oninput="this.value=comma(this.value);fuelCalc()"></div>
+    <div class="form-row"><label>청구 금액(원)<span class="hint">발생 유류비에서 30% 추가하여 지급됩니다. (자동 계산)</span></label><input class="input num" id="x_amount" placeholder="0" readonly style="background:var(--gray-100);font-weight:800;color:var(--billy-blue)"></div>
     <div class="f2"><div class="form-row"><label>입금 은행 <span class="req">*</span></label><select class="input" id="x_bank">${BANKS.map(b=>`<option>${b}</option>`).join('')}</select></div><div class="form-row"><label>본인 계좌번호 <span class="req">*</span></label><input class="input num" id="x_acc" placeholder="본인 환급 계좌"></div></div>
     <div class="form-row"><label>증빙 (Dropbox 링크)<span class="hint">선택 · 주유 영수증 등</span></label><input class="input" id="x_ev" placeholder="https://www.dropbox.com/..."></div>
   `,`<button class="btn btn-secondary" onclick="closeModal()">취소</button><button class="btn btn-primary" onclick="submitFuel()">신청</button>`);
 }
+function fuelCalc(){const b=numVal('x_base');const el=document.getElementById('x_amount');if(el)el.value=b?comma(String(Math.round(b*1.3))):'';}
 function submitFuel(){
-  const from=val('x_from'),to=val('x_to'),visit=val('x_visit'),amount=numVal('x_amount'),acc=val('x_acc');
-  if(!from||!to||!visit||!amount||!acc){toast('출발지·도착지·목적·금액·계좌는 필수예요.','err');return;}
-  const r={id:uid('p'),requester:ME().name,team:ME().team,payee:ME().name,bank:val('x_bank'),account:acc,amount,unit:'원',category:'유류비',purpose:visit+' ('+from+'→'+to+')',evidence:val('x_ev'),proofType:(val('x_ev')?'명세서':'none'),proofReason:(val('x_ev')?'':'유류비·출장 정산'),hasTax:false,status:'requested',applied:val('x_date')||today(),paidAt:'',fuel:{from,to,visit,km:val('x_km'),carNo:val('x_car'),roundTrip:document.getElementById('x_round').checked}};
+  const from=val('x_from'),to=val('x_to'),visit=val('x_visit'),base=numVal('x_base'),acc=val('x_acc');
+  const amount=Math.round(base*1.3);
+  if(!from||!to||!visit||!base||!acc){toast('출발지·도착지·목적·발생 유류비·계좌는 필수예요.','err');return;}
+  const r={id:uid('p'),requester:ME().name,team:ME().team,payee:ME().name,bank:val('x_bank'),account:acc,amount,unit:'원',category:'유류비',purpose:visit+' ('+from+'→'+to+') · 발생 '+comma(String(base))+'원+30%',evidence:val('x_ev'),proofType:(val('x_ev')?'명세서':'none'),proofReason:(val('x_ev')?'':'유류비·출장 정산'),hasTax:false,status:'requested',applied:val('x_date')||today(),paidAt:'',fuel:{from,to,visit,km:val('x_km'),carNo:val('x_car'),roundTrip:document.getElementById('x_round').checked,base}};
   r.approver=approverFor(r.requester,amount);
   sv('fin_submit_payout',{p:payoutPayload(r,0)},()=>{DB.payout.unshift(r);}).then(()=>{closeModal();current='payout';render();toast('유류비 신청을 등록했어요.','ok');});
 }
@@ -1026,23 +1035,29 @@ function submitApproveVendor(){
   sv('fin_approve_vendor',{p:payload},()=>{VENDORS.push({id:uid('v'),name:payload.name,bizNo:payload.bizNo,email:'',team:payload.team,unit:payload.unit,cnt:0,avg:0,max:0,lastDate:today(),bankbookUrl:payload.bankbook,bizregUrl:payload.bizreg,accounts:payload.account?[{id:uid('a'),bank:payload.bank,account:payload.account,holder:payload.holder,primary:true}]:[]});}).then(()=>{closeModal();render();toast('신규 거래처로 등록했어요. 다음 이체부터 자동 인식돼요.','ok');});
 }
 function renderVendors(){
-  const c=document.getElementById('content');let list=VENDORS.slice();
-  if(_q){const q=_q.toLowerCase();list=list.filter(v=>(v.name+v.bizNo+v.team).toLowerCase().includes(q));}
-  const s=_sort.vendors;list.sort((a,b)=>{let r=0;if(s.k==='name')r=a.name.localeCompare(b.name,'ko');else if(s.k==='amount')r=(a.avg||0)-(b.avg||0);else r=(a.cnt||0)-(b.cnt||0);return r*s.dir;});
+  const c=document.getElementById('content');
+  const vk=s=>String(s||'').replace(/\(주\)|주식회사|\(유\)|유한회사|\s|㈜|\(|\)/g,'').toLowerCase();
+  const reqMap={},paySum={},invSum={},invSumBiz={};
+  DB.payout.forEach(p=>{const k=vk(p.payee);if(!k)return;if(p.unit==='원')paySum[k]=(paySum[k]||0)+p.amount;const cur=reqMap[k];if(p.requester&&(!cur||String(p.applied||'')<cur.d))reqMap[k]={r:p.requester,d:p.applied||''};});
+  DB.invoice.forEach(i=>{const k=vk(i.company);if(k)invSum[k]=(invSum[k]||0)+(i.total||0);const b=digits(i.bizNo);if(b)invSumBiz[b]=(invSumBiz[b]||0)+(i.total||0);});
+  let list=VENDORS.slice();
+  list.forEach(v=>{v._req=(reqMap[vk(v.name)]||{}).r||'';v._pay=paySum[vk(v.name)]||0;v._inv=((v.bizNo?invSumBiz[digits(v.bizNo)]:invSum[vk(v.name)])||0);});
+  if(_q){const q=_q.toLowerCase();list=list.filter(v=>(v.name+v.bizNo+(v._req||'')).toLowerCase().includes(q));}
+  const s=_sort.vendors;list.sort((a,b)=>{let r=0;if(s.k==='name')r=a.name.localeCompare(b.name,'ko');else if(s.k==='amount')r=(a._pay||0)-(b._pay||0);else r=(a.cnt||0)-(b.cnt||0);return r*s.dir;});
   let h=`<div class="kpis" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))"><div class="kpi blue"><div class="lbl">거래처</div><div class="val">${VENDORS.length}곳</div></div><div class="kpi"><div class="lbl">사업자번호 보유</div><div class="val">${VENDORS.filter(v=>v.bizNo).length}곳</div></div><div class="kpi orange"><div class="lbl">다계좌 거래처</div><div class="val">${VENDORS.filter(v=>v.accounts.length>1).length}곳</div></div></div>`;
   const _pend=canVendorAdmin()?pendingNewVendors():[];window._pendVendors=_pend;
   if(_pend.length){h+=`<div class="card" style="border:1px solid var(--billy-blue-200);background:var(--billy-blue-50);margin-bottom:14px;padding:14px 16px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><b style="font-size:14px">🆕 신규 거래처 승인 대기</b><span class="tag tag-blue">${_pend.length}곳</span></div><div class="t-sub" style="margin-bottom:11px">아직 거래처로 등록되지 않은 입금처예요. 서류(통장사본·사업자등록증) 확인 후 <b>신규 거래처로 등록</b>하면 다음부터 자동 인식돼요.</div>${_pend.map((p,i)=>`<div class="acct-row"><div class="ab"><div class="abk">${escH(p.payee)} <span class="t-sub" style="font-weight:400">· ${p.cnt}건${p.sum?' · '+won(p.sum)+'원':''}</span></div><div class="anum num">${escH(p.bank||'-')} ${escH(p.account||'')} ${p.evidence?'<span class="tag tag-blue" style="margin-left:4px">📎 증빙</span>':''}</div></div><button class="btn btn-sm btn-primary" onclick="approveVendorForm(${i})">신규 거래처 등록</button></div>`).join('')}</div>`;}
   h+=`<div class="filters"><div class="search">${I.search}<input placeholder="거래처·사업자번호 검색" value="${escH(_q)}" oninput="onSearchInput(this)" oncompositionstart="onSearchCompStart()" oncompositionend="onSearchCompEnd(this)"></div></div>`;
   h+='<div class="card"><div class="table-wrap"><table style="--cw:'+colwVar('vendors')+'"><thead><tr>';
-  h+=`<th class="rz sortable" onclick="setSort('vendors','name')">거래처${sortIcon('vendors','name')}<span class="rzh" data-rz="vendors" onclick="event.stopPropagation()"></span></th><th>사업자번호</th><th>팀</th><th>대표계좌</th><th>계좌</th><th class="sortable" style="text-align:right" onclick="setSort('vendors','cnt')">거래수${sortIcon('vendors','cnt')}</th><th class="sortable" style="text-align:right" onclick="setSort('vendors','amount')">평균금액${sortIcon('vendors','amount')}</th><th></th></tr></thead><tbody>`;
+  h+=`<th class="rz sortable" onclick="setSort('vendors','name')">거래처${sortIcon('vendors','name')}<span class="rzh" data-rz="vendors" onclick="event.stopPropagation()"></span></th><th>사업자번호</th><th>대표계좌</th><th>등록 요청</th><th class="sortable" style="text-align:right" onclick="setSort('vendors','amount')">누적 이체${sortIcon('vendors','amount')}</th><th style="text-align:right">세금계산서</th><th></th></tr></thead><tbody>`;
   list.forEach(v=>{const pa=v.accounts.find(a=>a.primary)||v.accounts[0];
-    h+=`<tr><td class="rzc"><div class="t-name">${escH(v.name)}</div><div class="t-sub">${v.email?escH(v.email):'이메일 없음'}</div></td><td class="num">${v.bizNo?escH(v.bizNo):'<span class="t-sub">없음</span>'}</td><td><span class="tag tag-gray">${escH(normalizeTeam(v.team)||'-')}</span></td><td>${pa?escH(pa.bank)+' <span class="num">'+escH(pa.account)+'</span>':'-'}</td><td>${v.accounts.length>1?`<span class="tag tag-blue">${v.accounts.length}개</span>`:'1개'}</td><td style="text-align:right" class="num">${v.cnt}회</td><td style="text-align:right" class="amt">${won(v.avg)}${v.unit!=='원'?' '+v.unit:''}</td><td><div class="rowact"><button class="iconbtn" title="상세·계좌" onclick="viewVendor('${v.id}')">${I.eye}</button></div></td></tr>`;
+    h+=`<tr><td class="rzc"><div class="t-name">${escH(v.name)}</div><div class="t-sub">${v.email?escH(v.email):(v.accounts.length>1?v.accounts.length+'개 계좌':'이메일 없음')}</div></td><td class="num">${v.bizNo?escH(v.bizNo):'<span class="t-sub">없음</span>'}</td><td>${pa?escH(pa.bank)+' <span class="num">'+escH(pa.account)+'</span>':'-'}</td><td class="nmcell">${v._req?nameWrap(v._req):'<span class="t-sub">-</span>'}</td><td style="text-align:right"><span class="amt">${v._pay?won(v._pay)+(v.unit!=='원'?' '+v.unit:''):'-'}</span><div class="t-sub num">${v.cnt}건</div></td><td style="text-align:right" class="num">${v._inv?won(v._inv)+'원':'<span class="t-sub">-</span>'}</td><td><div class="rowact"><button class="iconbtn" title="상세·계좌" onclick="viewVendor('${v.id}')">${I.eye}</button></div></td></tr>`;
   });
   h+='</tbody></table></div></div>';c.innerHTML=h;
 }
 function viewVendor(id){const v=VENDORS.find(x=>x.id===id);if(!v)return;
   const accts=v.accounts.map((a,i)=>`<div class="acct-row ${a.primary?'primary':''}"><div class="ab"><div class="abk">${escH(a.bank)} ${a.primary?'<span class="tag tag-blue" style="margin-left:4px">대표</span>':''}</div><div class="anum num">${escH(a.account)} · ${escH(a.holder)}</div></div>${a.primary?'':`<button class="btn btn-sm btn-line" onclick="setPrimary('${v.id}',${i})">대표 지정</button>`}</div>`).join('');
-  modal('거래처 — '+v.name,'',`<div class="dl"><dt>사업자번호</dt><dd class="num">${v.bizNo?escH(v.bizNo):'없음'}</dd><dt>팀</dt><dd>${escH(normalizeTeam(v.team)||'-')}</dd><dt>이메일</dt><dd>${escH(v.email||'-')}</dd><dt>거래</dt><dd>${v.cnt}회 · 평균 ${won(v.avg)}${v.unit!=='원'?' '+v.unit:'원'} · 최대 ${won(v.max)}</dd><dt>최근거래</dt><dd>${escH(v.lastDate||'-')}</dd></div><div class="hr"></div><div style="font-weight:700;font-size:13px;margin-bottom:9px">등록 계좌 ${v.accounts.length}개</div>${accts}<div class="t-sub" style="margin-top:6px">※ 신규 이체 요청 시 대표계좌와 다른 계좌면 ⚠️ 계좌변경으로 표시됩니다.</div><div class="hr"></div><div style="font-weight:700;font-size:13px;margin-bottom:9px">📎 거래처 서류 ${(v.bankbookUrl&&v.bizregUrl)?'<span class="tag tag-blue" style="margin-left:4px">등록완료</span>':'<span class="tag tag-gray" style="margin-left:4px">미비</span>'}</div><div class="dl"><dt>통장 사본</dt><dd>${v.bankbookUrl?`<a href="${escH(v.bankbookUrl)}" target="_blank" rel="noopener" style="color:var(--billy-blue);text-decoration:underline">링크 ↗</a>`:'<span class="t-sub">미등록</span>'}</dd><dt>사업자등록증</dt><dd>${v.bizregUrl?`<a href="${escH(v.bizregUrl)}" target="_blank" rel="noopener" style="color:var(--billy-blue);text-decoration:underline">링크 ↗</a>`:'<span class="t-sub">미등록</span>'}</dd></div>${canApprove()?`<button class="btn btn-sm btn-line" style="margin-top:9px" onclick="editVendorDocs('${v.id}')">서류 링크 등록/수정</button>`:''}<div class="t-sub" style="margin-top:7px">한 번 등록하면 이 거래처의 모든 이체에 자동으로 연결돼요.</div>`,`<button class="btn btn-secondary" onclick="closeModal()">닫기</button><button class="btn btn-primary" onclick="newFromVendor('${v.id}')">이 거래처로 이체 요청</button>`);
+  modal('거래처 — '+v.name,'',`<div class="dl"><dt>사업자번호</dt><dd class="num">${v.bizNo?escH(v.bizNo):'없음'}</dd><dt>이메일</dt><dd>${escH(v.email||'-')}</dd><dt>등록 요청</dt><dd>${escH(v._req||'-')}</dd><dt>거래 횟수</dt><dd>${v.cnt}회</dd><dt>누적 이체</dt><dd><b>${v._pay?won(v._pay)+(v.unit!=='원'?' '+v.unit:'원'):'-'}</b></dd><dt>세금계산서 발행</dt><dd><b>${v._inv?won(v._inv)+'원':'-'}</b></dd><dt>최근거래</dt><dd>${escH(v.lastDate||'-')}</dd></div><div class="hr"></div><div style="font-weight:700;font-size:13px;margin-bottom:9px">등록 계좌 ${v.accounts.length}개</div>${accts}<div class="t-sub" style="margin-top:6px">※ 신규 이체 요청 시 대표계좌와 다른 계좌면 ⚠️ 계좌변경으로 표시됩니다.</div><div class="hr"></div><div style="font-weight:700;font-size:13px;margin-bottom:9px">📎 거래처 서류 ${(v.bankbookUrl&&v.bizregUrl)?'<span class="tag tag-blue" style="margin-left:4px">등록완료</span>':'<span class="tag tag-gray" style="margin-left:4px">미비</span>'}</div><div class="dl"><dt>통장 사본</dt><dd>${v.bankbookUrl?`<a href="${escH(v.bankbookUrl)}" target="_blank" rel="noopener" style="color:var(--billy-blue);text-decoration:underline">링크 ↗</a>`:'<span class="t-sub">미등록</span>'}</dd><dt>사업자등록증</dt><dd>${v.bizregUrl?`<a href="${escH(v.bizregUrl)}" target="_blank" rel="noopener" style="color:var(--billy-blue);text-decoration:underline">링크 ↗</a>`:'<span class="t-sub">미등록</span>'}</dd></div>${canApprove()?`<button class="btn btn-sm btn-line" style="margin-top:9px" onclick="editVendorDocs('${v.id}')">서류 링크 등록/수정</button>`:''}<div class="t-sub" style="margin-top:7px">한 번 등록하면 이 거래처의 모든 이체에 자동으로 연결돼요.</div>`,`<button class="btn btn-secondary" onclick="closeModal()">닫기</button><button class="btn btn-primary" onclick="newFromVendor('${v.id}')">이 거래처로 이체 요청</button>`);
 }
 function editVendorDocs(id){const v=VENDORS.find(x=>x.id===id);if(!v)return;
   modal('거래처 서류 — '+v.name,'',`<div class="form-row"><label>통장 사본 (Dropbox 링크)</label><input class="input" id="vd_bank" value="${escH(v.bankbookUrl||'')}" placeholder="https://www.dropbox.com/..."></div><div class="form-row"><label>사업자등록증 (Dropbox 링크)</label><input class="input" id="vd_biz" value="${escH(v.bizregUrl||'')}" placeholder="https://www.dropbox.com/..."></div><div class="t-sub">한 번 등록하면 이 거래처의 모든 이체에 자동으로 연결돼요. 동일 거래처는 매번 올릴 필요 없어요.</div>`,`<button class="btn btn-secondary" onclick="viewVendor('${id}')">취소</button><button class="btn btn-primary" onclick="saveVendorDocs('${id}')">저장</button>`);
