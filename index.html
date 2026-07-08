@@ -524,7 +524,7 @@ const PAGES={
   vendors:{t:'거래처 관리',d:'사업자번호로 통합된 거래처와 계좌를 관리합니다.',render:renderVendors},
   anomaly:{t:'이상거래 검토',d:'이상 신호가 감지된 이체를 모아서 검토합니다. 항목을 클릭하면 감지 근거(중복 내역·계좌·과거 통계)가 나와요.',render:renderAnomalies},
   proof:{t:'증빙 미수취',d:'세금계산서·현금영수증·계산서를 "받을 예정"으로 등록한 건을 추적합니다. 홈택스에서 확인되면 수취완료를 눌러주세요. (발행기한 = 작성일 기준 익월 10일)',render:renderProof},
-  coupon:{t:'빌리쇼핑 쿠폰',d:'고객 미팅 감사용 빌리쇼핑 3만원 쿠폰을 발급합니다. 신청하면 쿠폰번호가 바로 나오고, 고객에게 보낼 전달 메시지를 복사할 수 있어요.',render:renderCoupon},
+  coupon:{t:'빌리쇼핑 쿠폰',d:'엄빠를 직접 만나셨나요? 빌리쇼핑 쿠폰을 선물하고 베이비빌리 사용 경험을 얻는 좋은 기회로 활용해주세요! 신청하시면 쿠폰 번호가 나오고, 엄빠에게 보낼 전달 메시지를 복사할 수 있어요. 월 3회까지는 별도의 승인 없이 즉시 발급이 가능하니, 빌베인답게 Own Your Impact 하며 사용해주시길 바라요.',render:renderCoupon},
 };
 const NAV=[['dashboard','대시보드','m_dash'],['payout','이체 요청','m_money'],['invoice','세금계산서 발행','m_doc'],['coupon','빌리쇼핑 쿠폰','m_coupon'],['proof','증빙 미수취','m_proof'],['anomaly','이상거래 검토','m_alert'],['vendors','거래처 관리','m_vendor']];
 function buildNav(){
@@ -988,7 +988,7 @@ function renderCoupon(){
 function openCouponForm(){
   const admin=canApprove();
   modal('새 빌리쇼핑 쿠폰 발급','',`<div class="policy" style="background:var(--billy-blue-50);border-color:var(--billy-blue-100)"><b style="color:var(--billy-blue)">🎁 3만원 빌리쇼핑 쿠폰</b> — 신청하면 쿠폰번호가 바로 나오고, 전달 메시지를 복사해 고객에게 보내면 돼요.<br><span class="t-sub">· 같은 휴대폰에 이미 발급된 이력이 있으면 발급되지 않아요.<br>· 이번 달 3회째부터는 관리자 승인 후 발급돼요.</span></div>
-    <div class="f2"><div class="form-row"><label>수령인 이름 <span class="req">*</span></label><input class="input" id="cp_name" placeholder="고객 이름"></div><div class="form-row"><label>휴대폰 <span class="req">*</span><span class="hint">- 있어도/없어도 OK</span></label><input class="input num" id="cp_phone" placeholder="010-0000-0000" oninput="couponDupHint()"></div></div>
+    <div class="f2"><div class="form-row"><label>수령인 이름 <span class="req">*</span></label><input class="input" id="cp_name" placeholder="고객 이름"></div><div class="form-row"><label>휴대폰 <span class="req">*</span></label><input class="input num" id="cp_phone" placeholder="010-0000-0000" oninput="couponDupHint()"></div></div>
     <div class="form-row"><label>메모 <span class="hint">선택 · 내부 기록용</span></label><input class="input" id="cp_memo" placeholder="예: 0-6개월 신생아맘 인터뷰"></div>
     ${admin?`<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--gray-700);margin-top:4px"><input type="checkbox" class="cbx" id="cp_override" onchange="var n=document.getElementById('cp_ovBox');n.style.display=this.checked?'block':'none'">🔓 중복 무시하고 강제 발급 (관리자)</label><div class="form-row" id="cp_ovBox" style="display:none;margin-top:8px"><label>강제 발급 사유 <span class="req">*</span></label><input class="input" id="cp_ovReason" placeholder="예: 재참여 인터뷰이 (작년 참여)"></div>`:''}
     <div id="cp_anom" style="margin-top:8px"></div>
