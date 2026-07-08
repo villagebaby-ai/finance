@@ -35,6 +35,9 @@ a{color:inherit;text-decoration:none}
 .nav{padding:6px 12px;display:flex;flex-direction:column;gap:2px;flex:1;min-height:0;overflow-y:auto}
 .nav-label{font-size:11px;color:var(--gray-400);font-weight:500;padding:14px 12px 6px}
 .navsoon{font-size:9.5px;background:var(--gray-100);color:var(--gray);padding:1px 6px;border-radius:8px;margin-left:auto;font-weight:600;flex-shrink:0}
+.nav-item.navlink{text-decoration:none}
+.navemo{width:22px;display:inline-flex;justify-content:center;font-size:15px;flex-shrink:0}
+.navext{margin-left:auto;opacity:.4;font-size:11px}
 .nav-item{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:var(--r-md);color:var(--gray-700);font-weight:500;transition:.12s}
 .nav-item svg{width:19px;height:19px;flex-shrink:0;stroke:var(--gray-600);stroke-width:1.7;fill:none}
 .nav-item:hover{background:var(--gray-50)}
@@ -388,6 +391,13 @@ DB.coupons=[];DB.couponCodes=[];let COUPON_STOCK=0;
   DB.coupons.push({id:uid('c'),requester:'데모 팀장C',requesterEmail:'sm.cho@villagebaby.kr',team:'Commerce',name:'김하늘',phone:'010-1234-5678',phoneNorm:'01012345678',amount:30000,code:c0.code,status:'issued',hold:'',isOverride:false,memo:'0-6개월 신생아맘 인터뷰',createdAt:addDays(-3)});
 })();
 function couponStock(){return IS_SUPA?COUPON_STOCK:DB.couponCodes.filter(c=>c.status==='available').length;}
+/* ── 관리자 메모(기록) — payoutId → [{id,author,body,at}] ── */
+let MEMOS={};
+function memosFor(id){return MEMOS[id]||[];}
+function hasMemo(id){return (MEMOS[id]||[]).length>0;}
+(function memoSeed(){ // 데모: 첫 이체건에 메모 1개
+  const p=DB.payout.find(x=>x.status==='requested');if(p)MEMOS[p.id]=[{id:uid('mm'),author:'데모 재무',body:'세금계산서 아직 안 받음 — 거래처에 재요청함(6/24).',at:addDays(0)+' 10:20'}];
+})();
 let LOCKED=new Set(); // 마감된 'YYYY-MM'
 const WH_RATES={'사업소득 (3.3%)':0.033,'기타소득 (8.8%)':0.088};
 function isLockedMonth(d){return !!d&&LOCKED.has(String(d).slice(0,7));}
@@ -428,20 +438,23 @@ function anomalyDetail(id){
   if(v){const hist=DB.payout.filter(x=>{const fv=findVendor(x.payee);return fv&&fv.id===v.id;}).sort((a,c)=>String(c.applied||'').localeCompare(String(a.applied||''))).slice(0,6);b+=`<div class="hr"></div><div style="font-weight:700;font-size:13px;margin-bottom:8px">📜 ${escH(v.name)} 최근 이체 (평균 ${won(v.avg)}원 · 총 ${v.cnt}회)</div><div class="anom-list">${hist.map(d=>`<div class="anom-row"><span>${escH(d.applied||'-')}</span><b>${won(d.amount)}${d.unit==='원'?'원':' '+d.unit}</b><span>${escH(d.purpose||'')}</span></div>`).join('')||'<div class="t-sub">이력 없음</div>'}</div>`;}
   modal('⚠️ 이상거래 검토 — '+r.payee,'',b,`<button class="btn btn-secondary" onclick="closeModal()">닫기</button><button class="btn btn-primary" onclick="closeModal();viewPayout('${id}')">이체 상세 열기</button>`);
 }
+let _anomMemoOnly=false;
 function renderAnomalies(){
   const c=document.getElementById('content');
   const base=visible(DB.payout,'payout');
-  const rows=base.map(r=>({r,f:scanPayout(r)})).filter(x=>x.f.length);
+  let rows=base.map(r=>({r,f:scanPayout(r)})).filter(x=>x.f.length||hasMemo(x.r.id));
+  if(_anomMemoOnly)rows=rows.filter(x=>hasMemo(x.r.id));
   const isW=x=>x.f.some(f=>f.s==='warn');
   rows.sort((a,b)=>(isW(a)?0:1)-(isW(b)?0:1)||String(b.r.applied||'').localeCompare(String(a.r.applied||'')));
-  const warnN=rows.filter(isW).length;
+  const warnN=rows.filter(isW).length;const memoN=base.filter(x=>hasMemo(x.id)).length;
   let h=`<div class="period-bar">${periodSel()}</div>`;
-  h+=`<div class="sumbar"><div class="sb-seg"><span>검토 대상</span> <b>${rows.length}건</b></div><div class="sb-seg"><span>⚠️ 중대 (계좌변경·금액급증·중복)</span> <b>${warnN}건</b></div></div>`;
-  if(!rows.length){h+=`<div class="card"><div class="empty">${I.check}<div>감지된 이상 신호가 없어요 👍 (기간을 넓혀 보세요)</div></div></div>`;c.innerHTML=h;return;}
+  h+=`<div class="sumbar"><div class="sb-seg"><span>검토 대상</span> <b>${rows.length}건</b></div><div class="sb-seg"><span>⚠️ 중대</span> <b>${warnN}건</b></div><div class="sb-seg"><span>🗒 메모</span> <b>${memoN}건</b></div><button class="btn btn-sm ${_anomMemoOnly?'btn-primary':'btn-line'} sb-x" onclick="_anomMemoOnly=!_anomMemoOnly;render()">🗒 메모 있는 건만</button></div>`;
+  if(!rows.length){h+=`<div class="card"><div class="empty">${I.check}<div>${_anomMemoOnly?'메모가 있는 건이 없어요.':'감지된 이상 신호가 없어요 👍 (기간을 넓혀 보세요)'}</div></div></div>`;c.innerHTML=h;return;}
   h+='<div class="card"><div class="table-wrap"><table style="--cw:'+colwVar('payout')+'"><thead><tr>';
-  h+=`<th class="rz">거래처 · 적요<span class="rzh" data-rz="payout" onclick="event.stopPropagation()"></span></th><th style="text-align:right">금액</th><th>요청일</th><th>상태</th><th>이상 신호</th><th></th></tr></thead><tbody>`;
-  rows.forEach(({r,f})=>{const st=PSTATUS[r.status]||['?',''];
-    h+=`<tr style="cursor:pointer" onclick="anomalyDetail('${r.id}')"><td class="rzc"><div class="t-name">${escH(r.payee)}</div><div class="t-sub">${escH(r.purpose||'')}</div></td><td style="text-align:right" class="num">${won(r.amount)}${r.unit==='원'?'원':' '+r.unit}</td><td class="t-sub num" style="white-space:nowrap">${escH(r.applied||'-')}</td><td><span class="badge ${st[1]}">${st[0]}</span></td><td style="white-space:normal;max-width:260px">${f.map(flagHtml).join('')}</td><td><button class="iconbtn" title="근거 보기" onclick="event.stopPropagation();anomalyDetail('${r.id}')">${I.eye}</button></td></tr>`;
+  h+=`<th class="rz">거래처 · 적요<span class="rzh" data-rz="payout" onclick="event.stopPropagation()"></span></th><th style="text-align:right">금액</th><th>요청일</th><th>상태</th><th>이상 · 메모</th><th></th></tr></thead><tbody>`;
+  rows.forEach(({r,f})=>{const st=PSTATUS[r.status]||['?',''];const ms=memosFor(r.id);
+    const badges=f.map(flagHtml).join('')+(ms.length?`<span class="flag caution" title="${escH(ms[ms.length-1].body)}">🗒 메모 ${ms.length}</span>`:'');
+    h+=`<tr style="cursor:pointer" onclick="viewPayout('${r.id}')"><td class="rzc"><div class="t-name">${escH(r.payee)}</div><div class="t-sub">${escH(r.purpose||'')}</div></td><td style="text-align:right" class="num">${won(r.amount)}${r.unit==='원'?'원':' '+r.unit}</td><td class="t-sub num" style="white-space:nowrap">${escH(r.applied||'-')}</td><td><span class="badge ${st[1]}">${st[0]}</span></td><td style="white-space:normal;max-width:260px">${badges}</td><td><button class="iconbtn" title="${f.length?'감지 근거':'상세'}" onclick="event.stopPropagation();${f.length?`anomalyDetail('${r.id}')`:`viewPayout('${r.id}')`}">${I.eye}</button></td></tr>`;
   });
   h+='</tbody></table></div></div>';c.innerHTML=h;
 }
@@ -525,7 +538,7 @@ const PAGES={
   fuel:{t:'유류비 / 출장비',d:'본인 계좌로 정산되는 유류비·출장비 신청 목록이에요.',render:renderFuel},
   invoice:{t:'세금계산서 발행 요청',d:'세금계산서 발행 요청을 등록·처리합니다.',render:renderInvoice},
   vendors:{t:'거래처 관리',d:'사업자번호로 통합된 거래처와 계좌를 관리합니다.',render:renderVendors},
-  anomaly:{t:'이상거래 검토',d:'이상 신호가 감지된 이체를 모아서 검토합니다. 항목을 클릭하면 감지 근거(중복 내역·계좌·과거 통계)가 나와요.',render:renderAnomalies},
+  anomaly:{t:'이상거래 검토',d:'이상 신호가 감지된 이체 + 관리자 메모가 달린 건을 모아서 검토합니다. 항목을 클릭하면 근거·메모가 나와요.',render:renderAnomalies},
   proof:{t:'증빙 미수취',d:'세금계산서·현금영수증·계산서를 "받을 예정"으로 등록한 건을 추적합니다. 홈택스에서 확인되면 수취완료를 눌러주세요. (발행기한 = 작성일 기준 익월 10일)',render:renderProof},
   coupon:{t:'빌리쇼핑 쿠폰',d:'엄빠를 직접 만나셨나요? 빌리쇼핑 쿠폰을 선물하고 베이비빌리 사용 경험을 얻는 좋은 기회로 활용해주세요! 신청하시면 쿠폰 번호가 나오고, 엄빠에게 보낼 전달 메시지를 복사할 수 있어요. 월 3회까지는 별도의 승인 없이 즉시 발급이 가능하니, 빌베인답게 Own Your Impact 하며 사용해주시길 바라요.',render:renderCoupon},
   banklink:{t:'이체 여부연동',d:'법인통장 출금내역과 이체 요청을 자동으로 대사(매칭)하는 기능이에요. (추후 개발 예정)',render:renderBankLink},
@@ -540,6 +553,15 @@ const NAV=[
   ['anomaly','이상거래 검토','m_alert','관리자'],
   ['vendors','거래처 관리','m_vendor','관리자'],
   ['banklink','이체 여부연동','m_link','관리자'],
+];
+const FIN_LINKS=[
+  ['빌베 MVC','https://villagebaby.kr/playbook/','🧭'],
+  ['연차관리','https://hr.villagebaby.kr','🌴'],
+  ['법인 카드 등록','https://gowid.com/newpages/expenses','💳'],
+  ['책잇기','https://villagebaby.slack.com/archives/C08MU3X4CH2','📚'],
+  ['달리기','https://villagebaby.slack.com/archives/C078Y1FVBMX/p1779866703118889?thread_ts=1774237850.186359&cid=C078Y1FVBMX','🏃'],
+  ['걸어서 빌베속으로','https://villagebaby.slack.com/archives/C078Y1FVBMX/p1779866703118889?thread_ts=1774237850.186359&cid=C078Y1FVBMX','🚶'],
+  ['빌베 페이스북','https://docs.google.com/spreadsheets/d/18RYHd7SvdydxK-8GI0PqowpLmRCu7KI1gzRszA9Z5FE/edit?usp=sharing','👥'],
 ];
 function buildNav(){
   let h='';let mh='';let curGroup='';
@@ -556,6 +578,8 @@ function buildNav(){
     h+=`<div class="nav-item${current===k?' active':''}" onclick="go('${k}')">${I[ic]}<span>${label}</span>${soon}${dot}</div>`;
     mh+=`<button class="mnav-item${current===k?' active':''}" onclick="go('${k}')">${I[ic]}<span>${escH(label.split(' ')[0])}</span>${dot}</button>`;
   });
+  h+='<div class="nav-label">바로가기</div>';
+  FIN_LINKS.forEach(([lbl,url,emo])=>{h+=`<a class="nav-item navlink" href="${url}" target="_blank" rel="noopener"><span class="navemo">${emo}</span><span>${escH(lbl)}</span><span class="navext">↗</span></a>`;});
   document.getElementById('nav').innerHTML=h;
   const _mn=document.getElementById('mnav');if(_mn)_mn.innerHTML=mh;
 }
@@ -762,7 +786,7 @@ function viewPayout(id){
     <dt>팀</dt><dd>${escH(normalizeTeam(r.team)||'-')}</dd>
     <dt>고액 이체건</dt><dd>${isBig(r)?'🔺 1천만+ (고액)':'해당 없음'}</dd>
     ${r.paidAt?`<dt>지급완료</dt><dd>${escH(r.paidAt)}</dd>`:''}
-  </div>${proof}${fuel}${wh}`,foot);
+  </div>${proof}${fuel}${wh}${memoHtml(r)}`,foot);
 }
 function proofDetailHtml(r){
   if(!r.proofType)return '';
@@ -782,6 +806,16 @@ function proofDetailHtml(r){
   return `<div class="hr"></div><div style="font-weight:700;font-size:13px;margin-bottom:8px">🧾 증빙</div>${body}`;
 }
 function markProof(id,received){sv('fin_mark_proof',{p_id:id,p_received:!!received},()=>{const r=DB.payout.find(x=>x.id===id);if(r){r.proofStatus=received?'수취완료':'받을예정';r.proofReceivedAt=received?today():'';}}).then(()=>{const o=document.getElementById('ov');if(o)o.remove();render();toast(received?'증빙 수취완료로 표시했어요.':'받을예정으로 되돌렸어요.','ok');});}
+/* 관리자 메모(기록) — 관리자만 보고/작성 */
+function memoHtml(r){
+  if(!canViewAll())return '';
+  const ms=memosFor(r.id);
+  const list=ms.length?ms.map(m=>`<div style="background:#fffdf5;border:1px solid #f0e6c8;border-radius:9px;padding:9px 11px;margin-bottom:6px"><div style="font-size:13px;line-height:1.55;color:var(--gray-800);white-space:pre-wrap">${escH(m.body)}</div><div class="t-sub" style="margin-top:5px">${escH(m.author||'-')} · ${escH(m.at||'')}${canApprove()?` · <span onclick="delMemo('${m.id}','${r.id}')" style="color:var(--sys-red);cursor:pointer">삭제</span>`:''}</div></div>`).join(''):'<div class="t-sub">아직 메모가 없어요.</div>';
+  return `<div class="hr"></div><div style="font-weight:700;font-size:13px;margin-bottom:8px">🗒 관리자 메모 <span class="t-sub" style="font-weight:400">· 관리자에게만 보여요</span></div>${list}${canApprove()?`<div style="display:flex;gap:6px;margin-top:9px"><input class="input" id="memo_in_${r.id}" placeholder="메모 추가 (예: 세금계산서 재요청함)" style="flex:1" onkeydown="if(event.key==='Enter')addMemo('${r.id}')"><button class="btn btn-sm btn-primary" onclick="addMemo('${r.id}')">추가</button></div>`:''}`;
+}
+function addMemo(id){const el=document.getElementById('memo_in_'+id);const body=el?el.value.trim():'';if(!body){toast('메모 내용을 입력해 주세요.','err');return;}
+  sv('fin_add_memo',{p_payout_id:id,p_body:body},()=>{(MEMOS[id]=MEMOS[id]||[]).push({id:uid('mm'),author:ME().name,body:body,at:today()+' '+new Date().toTimeString().slice(0,5)});}).then(()=>{const o=document.getElementById('ov');if(o)o.remove();viewPayout(id);toast('메모를 추가했어요.','ok');});}
+function delMemo(mid,pid){sv('fin_del_memo',{p_id:mid},()=>{MEMOS[pid]=(MEMOS[pid]||[]).filter(m=>m.id!==mid);}).then(()=>{const o=document.getElementById('ov');if(o)o.remove();viewPayout(pid);toast('메모를 삭제했어요.');});}
 function decidePayout(id,status){sv('fin_decide_payout',{p_id:id,p_status:status,p_reason:''},()=>{const r=DB.payout.find(x=>x.id===id);if(r){r.status=status;if(status==='paid')r.paidAt=today();}}).then(()=>{closeModal();render();toast(status==='paid'?'지급완료로 표시했어요.':'반려했어요.',status==='rejected'?'err':'ok');});}
 /* 상태 인라인 변경 — 상태 배지 클릭 → 옵션 선택(재무만, 자유 전환) */
 function closeStatusMenu(){['statusMenu','statusBackdrop'].forEach(i=>{const e=document.getElementById(i);if(e)e.remove();});}
@@ -1138,6 +1172,7 @@ async function loadData(){
   LOCKED=new Set((lo.data||[]).map(x=>x.ym));
   DB.coupons=(cp||[]).map(_mapCoupon);
   try{const{data:stk}=await sb.rpc('fin_coupon_stock');COUPON_STOCK=Number(stk)||0;}catch(e){COUPON_STOCK=0;}
+  MEMOS={};try{const{data:mm}=await sb.from('fin_memos').select('*').order('created_at',{ascending:true});(mm||[]).forEach(m=>{(MEMOS[m.payout_id]=MEMOS[m.payout_id]||[]).push({id:m.id,author:m.author_name||'',body:m.body,at:(m.created_at||'').slice(0,16).replace('T',' ')});});}catch(e){}
 }
 /* 저장: 실모드=RPC→새로고침 / 데모=mockFn */
 function sv(rpc,args,mockFn){if(!IS_SUPA){if(mockFn)mockFn();return Promise.resolve(true);}return sb.rpc(rpc,args).then(({data,error})=>{if(error){toast(error.message||'오류가 났어요','err');throw error;}return loadData();});}
