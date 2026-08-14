@@ -125,6 +125,7 @@ button.badge:hover{filter:brightness(.96)}
 .tag-gray{background:var(--gray-100);color:var(--gray-600)}
 .tag-blue{background:var(--billy-blue-50);color:var(--billy-blue)}
 .tag-fuel{background:#eef7ed;color:#3a9d5d}
+.tag-warn{background:#fdeeee;color:#c4453f}
 .flag{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:700;padding:2px 6px;border-radius:5px;margin:1px 2px 1px 0;white-space:nowrap}
 .flag.warn{background:#fdecec;color:#d64545}
 .flag.caution{background:#fff1e2;color:#d9821f}
@@ -289,6 +290,8 @@ const I={
   m_proof:'<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path d="M6 2h9l5 5v15l-2.5-1.5L15 22l-2.5-1.5L10 22l-2.5-1.5L5 22V4a2 2 0 0 1 1-2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>',
   m_coupon:'<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4z"/><path d="M14 6v12"/></svg>',
   m_link:'<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>',
+  m_expense:'<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path d="M5 3h14v18l-2.3-1.6L14.4 21 12 19.4 9.6 21l-2.3-1.6L5 21z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>',
+  m_card:'<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 9.5h19M6 15h4"/></svg>',
 };
 /* ---------- 헬퍼 ---------- */
 function escH(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -309,6 +312,17 @@ const CATEGORIES=['외주·용역비','물품대금','광고·마케팅비','유
 const CURRENCIES=['원','USD','JPY','EUR'];
 const PSTATUS={requested:['지급대기','badge-pending'],paid:['지급완료','badge-paid'],rejected:['반려','badge-rejected'],canceled:['취소','badge-canceled']};
 const ISTATUS={requested:['발행대기','badge-pending'],issued:['발행완료','badge-paid'],rejected:['반려','badge-rejected'],canceled:['취소','badge-canceled']};
+/* ── 지출결의 / 기명 법인카드 신고 ── */
+const ESTATUS={requested:['결의 대기','badge-pending'],confirmed:['결의 완료','badge-paid'],rejected:['반려','badge-rejected'],canceled:['철회','badge-canceled']};
+/* 기명 법카(named_card)는 별도 탭이라 지출결의 폼의 선택지에서는 뺀다 */
+const EMETHODS=[['corp_card','법인카드 (공용)'],['personal','개인카드 · 사비'],['cash','현금'],['etc','기타']];
+const EMETHOD_LABEL={corp_card:'법인카드 (공용)',named_card:'기명 법인카드',personal:'개인카드 · 사비',cash:'현금',etc:'기타'};
+/* 기명 법카 신고 수신자 — 배포본은 공개 저장소라 실명을 소스에 넣지 않는다.
+   로그인 후 loadData 가 fin_card_report_to() 로 실제 이름을 채운다. */
+let CARD_REPORT_TO='재무 담당자';
+/* fin_expenses 스키마(95_finance_expense.sql) 미적용 상태로 배포돼도 앱이 죽지 않도록 —
+   조회 실패 시 false 로 내려가고 지출결의·기명 법카 탭을 숨긴다. */
+let EXPENSE_READY=true;
 const POLICY_HTML='<div class="policy"><b>📌 이체·발행 정책 (꼭 확인)</b><ol>'
  +'<li>세금계산서(매입) <b>작성일 = 실제 이체 당일</b>로 작성</li>'
  +'<li>세금계산서(매입·매출)는 <b>당월분 → 익월 10일까지</b> 발행 가능, 이후 발행 불가(가산세)</li>'
@@ -361,7 +375,7 @@ function findVendor(name){const k=String(name||'').replace(/\(주\)|주식회사
 const DROPBOX_FINANCE='https://www.dropbox.com/scl/fo/0qf98c1r9a0ikfauwtout/ACH4_XBPyeFgW_j4hFEpcuY?rlkey=c9s0wnw2z4zbs0hconaqfqzh8&dl=0';
 function vendorByBiz(bizNorm){bizNorm=digits(bizNorm);if(!bizNorm||bizNorm.length<10)return null;return VENDORS.find(v=>digits(v.bizNo)===bizNorm)||null;}
 /* ===================== 거래 데이터(데모) ===================== */
-const DB={payout:[],invoice:[]};
+const DB={payout:[],invoice:[],expense:[]};
 (function seed(){
   const P=(o)=>{o.id=uid('p');o.applied=o.applied||today();o.approver=approverFor(o.requester,o.amount);DB.payout.push(o);};
   P({requester:'데모 직원1',team:'M&E',payee:'(주)폴레드패밀리',bank:'기업',account:'420-097688-04-023',amount:1100000,unit:'원',category:'광고·마케팅비',purpose:'폴레드 라이브 광고비',proofType:'세금계산서',proofDate:addDays(-1),proofStatus:'받을예정',status:'requested',hasTax:true,applied:addDays(-1)});
@@ -382,6 +396,16 @@ const DB={payout:[],invoice:[]};
   V({requester:'데모 직원1',team:'M&E',saleType:'매출',company:'(주)베스트마트',bizNo:'1208801234',ceo:'김상호',email:'tax@bestmart.demo',writeDate:'2026-05-31',itemName:'유아용품 납품(5월)',supply:3000000,status:'requested'});
   V({requester:'데모 팀장B',team:'Brand',saleType:'매출',company:'(주)트루비전',bizNo:'8718103354',ceo:'정대표',email:'sj@truevision.demo',writeDate:'2026-05-31',itemName:'5월 러베 오프라인 판매대금',supply:4072773,status:'requested'});
   V({requester:'데모 팀장C',team:'Commerce',saleType:'매출',company:'(주)에이원베이비',bizNo:'2018618451',ceo:'이에이원',email:'shlee@aone.demo',writeDate:'2026-04-30',itemName:'4월 라이브방송 수수료',supply:646955,status:'issued',issuedAt:'2026-05-04'});
+  /* 지출결의 · 기명 법카 신고(데모) */
+  const E=(o)=>{o.id=uid('e');o.unit=o.unit||'원';o.applied=o.applied||o.spentDate;DB.expense.push(o);};
+  E({requester:'데모 직원2',team:'M&E',method:'corp_card',spentDate:addDays(-2),merchant:'쿠팡',amount:86400,category:'물품대금',purpose:'촬영용 소품 구매',proofType:'카드전표',status:'requested'});
+  E({requester:'데모 직원4',team:'Brand',method:'corp_card',spentDate:addDays(-4),merchant:'스타벅스 역삼점',amount:38000,category:'복리후생',purpose:'브랜드팀 주간회의 다과',attendees:'브랜드팀 5명',proofType:'카드전표',status:'confirmed'});
+  E({requester:'데모 팀장P',team:'Product',method:'personal',spentDate:addDays(-6),merchant:'Figma',amount:216000,category:'구독료',purpose:'디자인 툴 연간 결제(사비 선결제 → 환급 요청 별도)',proofType:'명세서',proofUrl:'https://www.dropbox.com/scl/demo/figma-receipt.pdf',status:'requested'});
+  E({requester:'데모 팀장C',team:'Commerce',method:'cash',spentDate:addDays(-11),merchant:'역삼동 우체국',amount:12800,category:'기타',purpose:'거래처 계약서 등기 발송',proofType:'현금영수증',status:'confirmed'});
+  E({requester:'데모 직원1',team:'M&E',method:'named_card',cardLast4:'4417',cardHolder:'데모 직원1',spentDate:addDays(-1),merchant:'GS칼텍스 논현점',amount:74000,category:'유류비',purpose:'베이비페어 부스 설치 이동',proofType:'카드전표',status:'requested'});
+  E({requester:'데모 직원1',team:'M&E',method:'named_card',cardLast4:'4417',cardHolder:'데모 직원1',spentDate:addDays(-8),merchant:'배달의민족',amount:52300,category:'복리후생',purpose:'야근 식대',attendees:'M&E팀 3명',proofType:'카드전표',status:'confirmed'});
+  E({requester:'데모 팀장B',team:'Brand',method:'named_card',cardLast4:'9082',cardHolder:'데모 팀장B',spentDate:addDays(-15),merchant:'교보문고',amount:64500,category:'복리후생',purpose:'책잇기 도서 구매',proofType:'카드전표',status:'confirmed'});
+  E({requester:'데모 팀장B',team:'Brand',method:'named_card',cardLast4:'9082',cardHolder:'데모 팀장B',spentDate:addDays(-38),merchant:'KTX 서울-부산',amount:118600,category:'기타',purpose:'부산 팝업스토어 현장 점검',proofType:'카드전표',status:'confirmed'});
 })();
 function payDup(r){return r.payee+'|'+digits(r.account)+'|'+r.amount;}
 DB.templates=[]; // 정기/반복 이체 템플릿
@@ -487,8 +511,9 @@ function renderProof(){
 }
 /* ===================== 상태/필터/기간 ===================== */
 let current='dashboard',_sel=new Set(),_q='',_filterOpen=false;
-let _sort={payout:{k:'date',dir:-1},invoice:{k:'writeDate',dir:-1},vendors:{k:'cnt',dir:-1}};
-const SORTS={payout:[['date','요청일'],['name','거래처명'],['amount','금액'],['team','팀'],['status','상태'],['paid','지급일']],invoice:[['date','요청일'],['name','공급받는자'],['item','품목'],['writeDate','작성일'],['amount','합계'],['status','상태']]};
+let _sort={payout:{k:'date',dir:-1},invoice:{k:'writeDate',dir:-1},vendors:{k:'cnt',dir:-1},expense:{k:'date',dir:-1},cardreport:{k:'date',dir:-1}};
+const SORTS={payout:[['date','요청일'],['name','거래처명'],['amount','금액'],['team','팀'],['status','상태'],['paid','지급일']],invoice:[['date','요청일'],['name','공급받는자'],['item','품목'],['writeDate','작성일'],['amount','합계'],['status','상태']],expense:[['date','사용일'],['name','사용처'],['amount','금액'],['team','팀'],['status','상태']],cardreport:[['date','사용일'],['name','사용처'],['amount','금액'],['holder','명의자'],['status','상태']]};
+const isExpPage=k=>(k==='expense'||k==='cardreport');
 let FILTER={teams:new Set(),requesters:new Set(),statuses:new Set(),anomaly:false,big:false};
 let PERIOD='month',PFROM='',PTO=''; // month | ytd | all | custom (기본=이번달)
 function clearFilter(){FILTER={teams:new Set(),requesters:new Set(),statuses:new Set(),anomaly:false,big:false};_q='';}
@@ -504,7 +529,7 @@ function inPeriod(d){if(PERIOD==='all')return true;if(!d)return false;const now=
 function roleScope(arr){if(IS_SUPA)return arr.slice();/* 실모드는 서버 RLS가 가시성 처리 */if(canViewAll())return arr.slice();if(ROLE==='lead')return arr.filter(r=>r.team===ME().team);return arr.filter(r=>r.requester===ME().name);}
 function visible(arr,kind){
   let list=roleScope(arr);
-  if(PERIOD!=='all'){const df=(kind==='invoice')?'writeDate':'applied';list=list.filter(r=>inPeriod(r[df]));}
+  if(PERIOD!=='all'){const df=(kind==='invoice')?'writeDate':(isExpPage(kind)?'spentDate':'applied');list=list.filter(r=>inPeriod(r[df]));}
   if(FILTER.teams.size)list=list.filter(r=>FILTER.teams.has(normalizeTeam(r.team)));
   if(FILTER.statuses.size)list=list.filter(r=>FILTER.statuses.has(r.status));
   if(FILTER.big&&kind==='payout')list=list.filter(r=>isBig(r));
@@ -514,7 +539,7 @@ function visible(arr,kind){
 }
 function tf(dim,v){const s=FILTER[dim];s.has(v)?s.delete(v):s.add(v);render();}
 function filterBar(kind){
-  const sm=kind==='payout'?PSTATUS:ISTATUS;
+  const sm=kind==='payout'?PSTATUS:(kind==='invoice'?ISTATUS:ESTATUS);
   const stats=Object.keys(sm);
   const cnt=FILTER.teams.size+FILTER.statuses.size+(FILTER.anomaly?1:0)+(FILTER.big?1:0);
   let h=`<div class="period-bar">${periodSel()}</div>`;
@@ -529,7 +554,7 @@ function filterBar(kind){
   }
   h+=`</div>`;
   h+=`<div class="sortctl"><span class="sl">정렬</span><select onchange="_sort['${kind}'].k=this.value;render()">${SORTS[kind].map(o=>`<option value="${o[0]}" ${_sort[kind].k===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select><button class="btn btn-sm btn-secondary" title="정렬 방향 전환" onclick="_sort['${kind}'].dir*=-1;render()">${_sort[kind].dir<0?'▼':'▲'}</button></div>`;
-  h+=`<div class="search">${I.search}<input placeholder="검색(거래처·금액·적요)" value="${escH(_q)}" oninput="onSearchInput(this)" oncompositionstart="onSearchCompStart()" oncompositionend="onSearchCompEnd(this)"></div></div>`;
+  h+=`<div class="search">${I.search}<input placeholder="${isExpPage(kind)?'검색(사용처·금액·목적)':'검색(거래처·금액·적요)'}" value="${escH(_q)}" oninput="onSearchInput(this)" oncompositionstart="onSearchCompStart()" oncompositionend="onSearchCompEnd(this)"></div></div>`;
   if(_filterOpen)h+=`<div class="filt-backdrop" onclick="_filterOpen=false;render()"></div>`;
   return h;
 }
@@ -538,6 +563,8 @@ const PAGES={
   dashboard:{t:'대시보드',d:'팀별 이체·발행 현황과 이상거래를 한눈에 봅니다. (카드·항목 클릭 시 해당 목록으로 이동)',render:renderDashboard},
   payout:{t:'이체 요청',d:'이체가 필요한 건을 신청·처리합니다. (유류비는 별도 탭)',render:renderPayout},
   fuel:{t:'유류비 / 출장비',d:'본인 계좌로 정산되는 유류비·출장비 신청 목록이에요.',render:renderFuel},
+  expense:{t:'지출결의',d:'이미 나간 지출(공용 법인카드·현금·사비)을 사후에 결의하고 증빙을 남깁니다. 기명 법인카드는 "기명 법카 신고" 탭에서 등록해주세요.',render:renderExpense},
+  cardreport:{t:'기명 법카 사용 신고',get d(){return '개인 명의로 발급된 법인카드(기명 법카)의 사용 내역을 신고하는 곳이에요. 등록하시면 '+CARD_REPORT_TO+'님께 별도로 전달됩니다.';},render:renderCardReport},
   invoice:{t:'세금계산서 발행 요청',d:'세금계산서 발행 요청을 등록·처리합니다.',render:renderInvoice},
   vendors:{t:'거래처 관리',d:'사업자번호로 통합된 거래처와 계좌를 관리합니다.',render:renderVendors},
   anomaly:{t:'이상거래 검토',d:'이상 신호가 감지된 이체 + 관리자 메모가 달린 건을 모아서 검토합니다. 항목을 클릭하면 근거·메모가 나와요.',render:renderAnomalies},
@@ -549,6 +576,8 @@ const NAV=[
   ['dashboard','대시보드','m_dash','일반'],
   ['payout','이체 요청','m_money','일반'],
   ['fuel','유류비 신청','car','일반'],
+  ['expense','지출결의','m_expense','일반','결의'],
+  ['cardreport','기명 법카 신고','m_card','일반','법카'],
   ['invoice','세금계산서 발행','m_doc','일반'],
   ['coupon','빌리쇼핑 쿠폰','m_coupon','일반'],
   ['vendors','거래처 관리','m_vendor','일반'],
@@ -567,8 +596,9 @@ const FIN_LINKS=[
 ];
 function buildNav(){
   let h='';let mh='';let curGroup='';
-  NAV.forEach(([k,label,ic,grp])=>{
+  NAV.forEach(([k,label,ic,grp,mlabel])=>{
     if((k==='anomaly'||k==='proof'||k==='banklink')&&!canViewAll())return;
+    if((k==='expense'||k==='cardreport')&&IS_SUPA&&!EXPENSE_READY)return;
     if(grp!==curGroup){curGroup=grp;h+=`<div class="nav-label">${grp==='관리자'?'관리자 전용':'재무 업무'}</div>`;}
     let dot='';
     if(canApprove()&&k==='payout'){const c=DB.payout.filter(r=>r.status==='requested'&&r.category!=='유류비').length;if(c)dot=`<span class="dot">${c}</span>`;}
@@ -576,16 +606,18 @@ function buildNav(){
     if(canApprove()&&k==='invoice'){const c=DB.invoice.filter(r=>r.status==='requested').length;if(c)dot=`<span class="dot">${c}</span>`;}
     if(canViewAll()&&k==='proof'){const c=DB.payout.filter(r=>r.status==='paid'&&proofOverdue(r)).length;if(c)dot=`<span class="dot">${c}</span>`;}
     if(canApprove()&&k==='coupon'){const c=DB.coupons.filter(r=>r.status==='pending').length;if(c)dot=`<span class="dot">${c}</span>`;}
+    if(canApprove()&&k==='expense'){const c=DB.expense.filter(r=>r.status==='requested'&&r.method!=='named_card').length;if(c)dot=`<span class="dot">${c}</span>`;}
+    if(canApprove()&&k==='cardreport'){const c=DB.expense.filter(r=>r.status==='requested'&&r.method==='named_card').length;if(c)dot=`<span class="dot">${c}</span>`;}
     const soon=k==='banklink'?'<span class="navsoon">예정</span>':'';
     h+=`<div class="nav-item${current===k?' active':''}" onclick="go('${k}')">${I[ic]}<span>${label}</span>${soon}${dot}</div>`;
-    mh+=`<button class="mnav-item${current===k?' active':''}" onclick="go('${k}')">${I[ic]}<span>${escH(label.split(' ')[0])}</span>${dot}</button>`;
+    mh+=`<button class="mnav-item${current===k?' active':''}" onclick="go('${k}')">${I[ic]}<span>${escH(mlabel||label.split(' ')[0])}</span>${dot}</button>`;
   });
   h+='<div class="nav-label">바로가기</div>';
   FIN_LINKS.forEach(([lbl,url,emo])=>{h+=`<a class="nav-item navlink" href="${url}" target="_blank" rel="noopener"><span class="navemo">${emo}</span><span>${escH(lbl)}</span><span class="navext">↗</span></a>`;});
   document.getElementById('nav').innerHTML=h;
   const _mn=document.getElementById('mnav');if(_mn)_mn.innerHTML=mh;
 }
-function go(k){current=k;_sel=new Set();_q='';_filterOpen=false;clearFilter();render();}
+function go(k){if((k==='expense'||k==='cardreport')&&IS_SUPA&&!EXPENSE_READY)k='dashboard';current=k;_sel=new Set();_q='';_filterOpen=false;clearFilter();render();}
 function landing(page,opts){clearFilter();opts=opts||{};if(opts.team)FILTER.teams.add(opts.team);if(opts.status)FILTER.statuses.add(opts.status);if(opts.big)FILTER.big=true;if(opts.anomaly)FILTER.anomaly=true;if(opts.payee)_q=opts.payee;current=page;_sel=new Set();_filterOpen=true;render();}
 function setRole(r){ROLE=r;_sel=new Set();clearFilter();if((current==='anomaly'||current==='proof'||current==='banklink')&&!canViewAll())current='dashboard';render();}
 function render(){
@@ -594,6 +626,8 @@ function render(){
   let act='';
   if(current==='payout')act=`<button class="btn btn-line btn-sm" onclick="openTemplates()">🔁 정기</button><button class="btn btn-line btn-sm" onclick="openWHForm()">3.3% 지급</button><button class="btn btn-line btn-sm" onclick="openBulkForm()">📥 일괄</button><button class="btn btn-primary" onclick="openPayoutForm()">${I.plus}<span>새 이체 요청</span></button>`;
   if(current==='fuel')act=`<button class="btn btn-primary" onclick="openFuelForm()">${I.car}<span>유류비 신청</span></button>`;
+  if(current==='expense')act=`<button class="btn btn-primary" onclick="openExpenseForm()">${I.plus}<span>지출결의 등록</span></button>`;
+  if(current==='cardreport')act=`<button class="btn btn-line btn-sm" onclick="openCardBulkForm()">📥 일괄</button><button class="btn btn-primary" onclick="openCardForm()">${I.plus}<span>기명 법카 신고</span></button>`;
   if(current==='invoice')act=`<button class="btn btn-primary" onclick="openInvoiceForm()">${I.plus}<span>새 발행 요청</span></button>`;
   if(current==='vendors')act=`<button class="btn btn-line" onclick="exportVendors()">${I.download}<span>거래처 엑셀</span></button>`;
   if(current==='coupon')act=`${canApprove()?`<button class="btn btn-line btn-sm" onclick="openCouponCodeForm()">${I.plus}<span>코드 추가</span></button>`:''}<button class="btn btn-primary" onclick="openCouponForm()">${I.plus}<span>새 쿠폰 발급</span></button>`;
@@ -610,7 +644,7 @@ function _searchRender(){const cur=document.querySelector('.search input');const
 function onSearch(v){_q=v;_searchRender();}
 function setSort(page,k){const s=_sort[page];if(s.k===k)s.dir*=-1;else{s.k=k;s.dir=(k==='date'||k==='writeDate'||k==='paid'||k==='amount')?-1:1;}render();}
 function sortIcon(page,k){const s=_sort[page];return s.k===k?`<span class="ar">${s.dir>0?'▲':'▼'}</span>`:'';}
-function sortVal(r,page,k){if(k==='amount')return page==='invoice'?(r.total||0):(r.amount||0);if(k==='name')return (page==='invoice'?r.company:r.payee)||'';if(k==='item')return r.itemName||'';if(k==='writeDate')return r.writeDate||'';if(k==='team')return normalizeTeam(r.team)||'';if(k==='status')return r.status||'';if(k==='paid')return r.paidAt||'';return r.applied||'';}
+function sortVal(r,page,k){const exp=isExpPage(page);if(k==='amount')return page==='invoice'?(r.total||0):(r.amount||0);if(k==='name')return (page==='invoice'?r.company:(exp?r.merchant:r.payee))||'';if(k==='holder')return r.cardHolder||'';if(k==='item')return r.itemName||'';if(k==='writeDate')return r.writeDate||'';if(k==='team')return normalizeTeam(r.team)||'';if(k==='status')return r.status||'';if(k==='paid')return r.paidAt||'';return (exp?r.spentDate:r.applied)||'';}
 function applySort(list,page){const s=_sort[page];const isNum=(s.k==='amount');list.sort((a,b)=>{const av=sortVal(a,page,s.k),bv=sortVal(b,page,s.k);let r=isNum?(av-bv):String(av).localeCompare(String(bv),'ko');return r*s.dir||(b.id>a.id?1:-1);});return list;}
 function toggleSel(id){_sel.has(id)?_sel.delete(id):_sel.add(id);render();}
 function toggleAll(page){const list=visible(page==='payout'?DB.payout:DB.invoice,page);const ids=list.map(r=>r.id);_sel=new Set(ids.every(i=>_sel.has(i))?[]:ids);render();}
@@ -620,7 +654,7 @@ function periodSel(){return `<div class="seg"><button class="${PERIOD==='month'?
 function fmtCur(list){const m={};list.forEach(r=>{if(r.unit&&r.unit!=='원')m[r.unit]=(m[r.unit]||0)+r.amount;});return Object.entries(m).map(([u,v])=>` · ${u} ${won(v)}`).join('');}
 function payoutSumBar(list){const krwSum=list.filter(r=>r.unit==='원').reduce((s,r)=>s+r.amount,0);const pend=list.filter(r=>r.status==='requested');const pendKrw=pend.filter(r=>r.unit==='원').reduce((s,r)=>s+r.amount,0);return `<div class="sumbar"><div class="sb-seg"><span>표시</span> <b>${list.length}건</b></div><div class="sb-seg"><span>원화 합계</span> <b>${won(krwSum)}원</b>${fmtCur(list)}</div><div class="sb-seg"><span>미지급</span> <b>${pend.length}건</b> · ${won(pendKrw)}원</div><button class="btn btn-sm btn-line sb-x" onclick="exportPayoutList()">${I.download}<span>엑셀</span></button></div>`;}
 function invoiceSumBar(list){const supply=list.reduce((s,r)=>s+r.supply,0),vat=list.reduce((s,r)=>s+r.tax,0),total=list.reduce((s,r)=>s+r.total,0);const pend=list.filter(r=>r.status==='requested').length;return `<div class="sumbar"><div class="sb-seg"><span>표시</span> <b>${list.length}건</b></div><div class="sb-seg"><span>공급가액</span> <b>${won(supply)}</b> · <span>세액</span> ${won(vat)} · <span>합계</span> <b>${won(total)}원</b></div><div class="sb-seg"><span>발행대기</span> <b>${pend}건</b></div><button class="btn btn-sm btn-line sb-x" onclick="exportInvoiceList()">${I.download}<span>엑셀</span></button></div>`;}
-function todoBanner(){const pend=DB.payout.filter(r=>r.status==='requested');const pendKrw=pend.filter(r=>r.unit==='원').reduce((s,r)=>s+r.amount,0);const now=new Date(today());const due=DB.invoice.filter(r=>{if(r.status!=='requested')return false;const dl=invoiceDeadline(r.writeDate);if(!dl)return false;return Math.round((dl-now)/86400000)<=3;});const overdue=due.filter(r=>(invoiceDeadline(r.writeDate)-now)<0).length;const proofOver=DB.payout.filter(r=>r.status==='paid'&&proofOverdue(r));if(!pend.length&&!due.length&&!proofOver.length)return `<div class="todo ok">✅ 오늘 처리할 미지급·발행 항목이 없어요.</div>`;let it=[];if(pend.length)it.push(`<button class="todo-item" onclick="current='payout';clearFilter();FILTER.statuses=new Set(['requested']);render()"><b>${pend.length}건</b> 미지급 대기 · <span>${won(pendKrw)}원</span></button>`);if(due.length)it.push(`<button class="todo-item warn" onclick="current='invoice';clearFilter();_sort.invoice={k:'writeDate',dir:1};render()"><b>${due.length}건</b> 세금계산서 발행기한 임박${overdue?' (기한 지남 '+overdue+')':''}</button>`);if(proofOver.length)it.push(`<button class="todo-item warn" onclick="go('proof')"><b>${proofOver.length}건</b> 증빙 미수취 (발행기한 경과)</button>`);return `<div class="todo"><span class="todo-h">📌 오늘 할 일</span>${it.join('')}</div>`;}
+function todoBanner(){const pend=DB.payout.filter(r=>r.status==='requested');const pendKrw=pend.filter(r=>r.unit==='원').reduce((s,r)=>s+r.amount,0);const now=new Date(today());const due=DB.invoice.filter(r=>{if(r.status!=='requested')return false;const dl=invoiceDeadline(r.writeDate);if(!dl)return false;return Math.round((dl-now)/86400000)<=3;});const overdue=due.filter(r=>(invoiceDeadline(r.writeDate)-now)<0).length;const proofOver=DB.payout.filter(r=>r.status==='paid'&&proofOverdue(r));const expPend=canApprove()?DB.expense.filter(r=>r.status==='requested'):[];const cardPend=expPend.filter(r=>r.method==='named_card').length;const genPend=expPend.length-cardPend;if(!pend.length&&!due.length&&!proofOver.length&&!expPend.length)return `<div class="todo ok">✅ 오늘 처리할 미지급·발행 항목이 없어요.</div>`;let it=[];if(pend.length)it.push(`<button class="todo-item" onclick="current='payout';clearFilter();FILTER.statuses=new Set(['requested']);render()"><b>${pend.length}건</b> 미지급 대기 · <span>${won(pendKrw)}원</span></button>`);if(due.length)it.push(`<button class="todo-item warn" onclick="current='invoice';clearFilter();_sort.invoice={k:'writeDate',dir:1};render()"><b>${due.length}건</b> 세금계산서 발행기한 임박${overdue?' (기한 지남 '+overdue+')':''}</button>`);if(proofOver.length)it.push(`<button class="todo-item warn" onclick="go('proof')"><b>${proofOver.length}건</b> 증빙 미수취 (발행기한 경과)</button>`);if(genPend)it.push(`<button class="todo-item" onclick="go('expense')"><b>${genPend}건</b> 지출결의 대기</button>`);if(cardPend)it.push(`<button class="todo-item" onclick="go('cardreport')"><b>${cardPend}건</b> 기명 법카 확인 대기</button>`);return`<div class="todo"><span class="todo-h">📌 오늘 할 일</span>${it.join('')}</div>`;}
 function renderDashboard(){
   const c=document.getElementById('content');
   const EXCLUDE_TEAMS=new Set(['사채업자','글로벌','앱팀 (재미팀)','앱 (재미)']);
@@ -934,6 +968,287 @@ function openTemplates(){
   modal('🔁 정기 이체 관리','',body,'<button class="btn btn-secondary" onclick="closeModal()">닫기</button>');
 }
 function recurOnce(tid){const t=DB.templates.find(x=>x.id===tid);if(!t||t.done>=t.total)return;sv('fin_recur_once',{p_id:tid},()=>{const r={id:uid('p'),requester:t.requester,team:t.team,payee:t.payee,bank:t.bank,account:t.account,amount:t.amount,unit:'원',category:t.category,purpose:t.purpose+' (정기 '+(t.done+1)+'/'+t.total+')',hasTax:t.hasTax,status:'requested',applied:t.nextDate,paidAt:''};DB.payout.unshift(r);t.done++;t.nextDate=addMonth(t.nextDate,1);}).then(()=>{closeModal();render();toast('정기 이체 회차를 생성했어요.','ok');});}
+/* ===================== 지출결의 · 기명 법인카드 신고 =====================
+   한 테이블(fin_expenses)에 method 로 구분하고, 기명 법카(named_card)만 탭을 분리한다.
+   유류비가 fin_payouts 안에 있으면서 탭만 분리된 것과 같은 구조.
+   폼 입력 id 는 두 폼이 공유(e_*) — 모달은 한 번에 하나만 열린다. */
+function expList(named){const page=named?'cardreport':'expense';return applySort(visible(DB.expense,page).filter(r=>named?r.method==='named_card':r.method!=='named_card'),page);}
+function expProofTag(r){
+  if(!r.proofType)return '<span class="tag tag-warn">미기재</span>';
+  if(r.proofType==='none')return `<span class="tag tag-warn" title="${escH(r.proofReason||'')}">증빙 없음</span>`;
+  const link=r.proofUrl?` <a href="${escH(r.proofUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="증빙 열기">📎</a>`:'';
+  return `<span class="tag tag-gray">${escH(PROOF_LABEL[r.proofType]||r.proofType)}</span>${link}`;
+}
+function expSumBar(list,named){
+  const krw=list.filter(r=>r.unit==='원').reduce((s,r)=>s+r.amount,0);
+  const pend=list.filter(r=>r.status==='requested').length;
+  return `<div class="sumbar"><div class="sb-seg"><span>표시</span> <b>${list.length}건</b></div><div class="sb-seg"><span>원화 합계</span> <b>${won(krw)}원</b>${fmtCur(list)}</div><div class="sb-seg"><span>${named?'확인 대기':'결의 대기'}</span> <b>${pend}건</b></div><button class="btn btn-sm btn-line sb-x" onclick="exportExpenseList(${named?'true':'false'})">${I.download}<span>엑셀</span></button></div>`;
+}
+function expRowActions(r){
+  let h='<td><div class="rowact">';
+  h+=`<button class="iconbtn" title="복제" onclick="event.stopPropagation();cloneExpense('${r.id}')">${I.copy}</button>`;
+  if(r.requester===ME().name&&r.status==='requested')h+=`<button class="iconbtn" title="철회" onclick="event.stopPropagation();cancelExpense('${r.id}')">${I.trash}</button>`;
+  return h+'</div></td>';
+}
+function expStatusCell(r,admin){
+  const st=ESTATUS[r.status]||['?',''];
+  return `<td>${admin?`<button class="badge ${st[1]}" onclick="event.stopPropagation();openExpStatusMenu('${r.id}',event)" title="클릭해서 상태 변경">${st[0]}<span class="caret">▼</span></button>`:`<span class="badge ${st[1]}">${st[0]}</span>`}</td>`;
+}
+function renderExpense(){
+  const c=document.getElementById('content');const admin=canApprove();
+  const list=expList(false);
+  let h=filterBar('expense');
+  h+=expSumBar(list,false);
+  if(!list.length){h+=`<div class="card"><div class="empty">${I.m_expense}<div>지출결의 내역이 없어요. 우측 상단 "지출결의 등록"으로 추가하세요.</div></div></div>`;c.innerHTML=h;return;}
+  h+='<div class="card"><div class="table-wrap"><table class="cardtbl" style="--cw:'+colwVar('expense')+'"><thead><tr>';
+  h+=`<th class="rz sortable" onclick="setSort('expense','name')">사용처 · 목적${sortIcon('expense','name')}<span class="rzh" data-rz="expense" onclick="event.stopPropagation()"></span></th><th class="mhide">팀</th><th class="mhide">신청인</th><th class="mhide">결제수단</th><th class="mhide">분류</th><th class="sortable mhide" onclick="setSort('expense','date')">사용일${sortIcon('expense','date')}</th><th class="mhide">증빙</th><th class="sortable" style="text-align:right" onclick="setSort('expense','amount')">금액${sortIcon('expense','amount')}</th><th>상태</th><th></th></tr></thead><tbody>`;
+  list.forEach(r=>{
+    h+=`<tr class="rowclk" onclick="viewExpense('${r.id}')">`;
+    h+=`<td class="rzc"><div class="t-name">${escH(r.merchant)}</div><div class="t-sub">${escH(r.purpose||'-')}</div></td>`;
+    h+=`<td class="mhide">${escH(normalizeTeam(r.team)||'-')}</td>`;
+    h+=`<td class="mhide nmcell">${r.requester?nameWrap(r.requester):'<span class="t-sub">-</span>'}</td>`;
+    h+=`<td class="mhide"><span class="tag tag-gray">${escH(EMETHOD_LABEL[r.method]||r.method)}</span></td>`;
+    h+=`<td class="mhide"><span class="tag tag-gray">${escH(r.category||'-')}</span></td>`;
+    h+=`<td class="t-sub num mhide" style="white-space:nowrap">${escH(r.spentDate||'-')}</td>`;
+    h+=`<td class="mhide">${expProofTag(r)}</td>`;
+    h+=`<td style="text-align:right"><span class="amt">${won(r.amount)}</span>${r.unit!=='원'?' <span class="t-sub">'+escH(r.unit)+'</span>':''}</td>`;
+    h+=expStatusCell(r,admin)+expRowActions(r)+'</tr>';
+  });
+  h+='</tbody></table></div></div>';
+  c.innerHTML=h;
+}
+/* 기명 법카 — 신고 기준이 월별이라 사용월 단위로 취합해서 보여준다 */
+function cardMonths(){
+  const m={};
+  roleScope(DB.expense).filter(r=>r.method==='named_card'&&r.status!=='canceled'&&r.status!=='rejected').forEach(r=>{
+    const ym=(r.spentDate||'').slice(0,7);if(!ym)return;
+    if(!m[ym])m[ym]={ym,cnt:0,krw:0,pend:0};
+    m[ym].cnt++;if(r.unit==='원')m[ym].krw+=r.amount;if(r.status==='requested')m[ym].pend++;
+  });
+  return Object.values(m).sort((a,b)=>b.ym.localeCompare(a.ym)).slice(0,6);
+}
+function renderCardReport(){
+  const c=document.getElementById('content');const admin=canApprove();
+  const list=expList(true);
+  let h=`<div class="policy" style="background:var(--billy-blue-50);border-color:var(--billy-blue-100)"><b style="color:var(--billy-blue)">💳 기명 법인카드는 사용 내역을 따로 신고해야 해요.</b><br>개인 이름으로 발급된 법인카드예요. 공용 법인카드와 달리 회사가 사용처를 자동으로 알 수 없어서, 여기에 등록하시면 <b>${escH(CARD_REPORT_TO)}님</b>께 전달됩니다. 결제한 달의 <b>다음 달 10일 전</b>까지 올려주시면 마감에 걸리지 않아요.<br>여러 건이면 카드사 이용내역을 복사해서 <b>📥 일괄</b>로 한 번에 올리실 수 있어요.</div>`;
+  const months=cardMonths();
+  if(months.length)h+=`<div class="sumbar" style="flex-wrap:wrap"><div class="sb-seg"><span>사용월별</span></div>${months.map(m=>`<div class="sb-seg"><span>${escH(m.ym)}</span> <b>${won(m.krw)}원</b> <span>· ${m.cnt}건</span>${m.pend?` <span style="color:var(--sys-red);font-weight:700">· 확인 대기 ${m.pend}</span>`:''}</div>`).join('')}</div>`;
+  h+=filterBar('cardreport');
+  h+=expSumBar(list,true);
+  if(!list.length){h+=`<div class="card"><div class="empty">${I.m_card}<div>신고된 기명 법카 사용 내역이 없어요. 우측 상단 "기명 법카 신고"로 등록하세요.</div></div></div>`;c.innerHTML=h;return;}
+  h+='<div class="card"><div class="table-wrap"><table class="cardtbl" style="--cw:'+colwVar('cardreport')+'"><thead><tr>';
+  h+=`<th class="rz sortable" onclick="setSort('cardreport','name')">사용처 · 목적${sortIcon('cardreport','name')}<span class="rzh" data-rz="cardreport" onclick="event.stopPropagation()"></span></th><th class="sortable mhide" onclick="setSort('cardreport','holder')">명의자 · 카드${sortIcon('cardreport','holder')}</th><th class="mhide">팀</th><th class="mhide">분류</th><th class="sortable mhide" onclick="setSort('cardreport','date')">사용일${sortIcon('cardreport','date')}</th><th class="mhide">증빙</th><th class="sortable" style="text-align:right" onclick="setSort('cardreport','amount')">금액${sortIcon('cardreport','amount')}</th><th>상태</th><th></th></tr></thead><tbody>`;
+  list.forEach(r=>{
+    h+=`<tr class="rowclk" onclick="viewExpense('${r.id}')">`;
+    h+=`<td class="rzc"><div class="t-name">${escH(r.merchant)}</div><div class="t-sub">${escH(r.purpose||'-')}</div></td>`;
+    h+=`<td class="mhide nmcell"><div class="t-name">${r.cardHolder?nameWrap(r.cardHolder):'-'}</div><div class="t-sub num">끝 ${escH(r.cardLast4||'----')}</div></td>`;
+    h+=`<td class="mhide">${escH(normalizeTeam(r.team)||'-')}</td>`;
+    h+=`<td class="mhide"><span class="tag tag-gray">${escH(r.category||'-')}</span></td>`;
+    h+=`<td class="t-sub num mhide" style="white-space:nowrap">${escH(r.spentDate||'-')}</td>`;
+    h+=`<td class="mhide">${expProofTag(r)}</td>`;
+    h+=`<td style="text-align:right"><span class="amt">${won(r.amount)}</span>${r.unit!=='원'?' <span class="t-sub">'+escH(r.unit)+'</span>':''}</td>`;
+    h+=expStatusCell(r,admin)+expRowActions(r)+'</tr>';
+  });
+  h+='</tbody></table></div></div>';
+  c.innerHTML=h;
+}
+/* ── 폼 ── */
+function expProofBoxHtml(seed,defType){
+  seed=seed||{};const def=seed.proofType||defType||'카드전표';
+  return `<div style="border:1px solid var(--gray-200);border-radius:var(--r-md);padding:12px 13px;margin:2px 0 12px;background:#f8f9fb">
+    <div style="font-weight:700;font-size:12.5px;margin-bottom:9px">🧾 증빙 <span class="req">*</span> <span class="hint" style="font-weight:400">적격증빙이 없으면 매입세액 공제를 받지 못해요.</span></div>
+    <div class="form-row" style="margin-bottom:10px"><label>증빙 유형 <span class="req">*</span></label><select class="input" id="e_prooftype" onchange="expProofChange()"><option value="">— 선택 —</option>${PROOF_TYPES.map(p=>`<option value="${p[0]}" ${def===p[0]?'selected':''}>${p[1]}</option>`).join('')}</select></div>
+    <div class="form-row" id="e_proofUrlRow" style="display:none;margin-bottom:0"><label id="e_proofUrlLbl">증빙 링크 (Dropbox)<span class="hint">선택 · 영수증 사진</span></label><input class="input" id="e_proofurl" value="${escH(seed.proofUrl||'')}" placeholder="https://www.dropbox.com/..."></div>
+    <div class="form-row" id="e_proofNoneRow" style="display:none;margin-bottom:0"><label>증빙 없음 사유 <span class="req">*</span></label><input class="input" id="e_proofreason" value="${escH(seed.proofReason||'')}" placeholder="예: 간이영수증만 발급 / 해외 온라인 결제"></div>
+  </div>`;
+}
+function expProofChange(){
+  const t=val('e_prooftype');
+  const U=document.getElementById('e_proofUrlRow');if(U)U.style.display=(t&&t!=='none')?'block':'none';
+  const L=document.getElementById('e_proofUrlLbl');if(L)L.innerHTML=(t==='명세서')?'증빙 링크 (Dropbox) <span class="req">*</span>':'증빙 링크 (Dropbox)<span class="hint">선택 · 영수증 사진</span>';
+  const N=document.getElementById('e_proofNoneRow');if(N)N.style.display=(t==='none')?'block':'none';
+}
+function expMethodChange(){
+  const el=document.getElementById('e_note');if(!el)return;
+  el.innerHTML=(val('e_method')==='personal')
+    ?`<div style="background:var(--billy-blue-50);border:1px solid var(--billy-blue-100);border-radius:var(--r-md);padding:10px 12px;font-size:12.5px;line-height:1.65;color:var(--gray-800)">💰 <b>사비로 먼저 결제하셨나요?</b> 지출결의는 <b>지출 기록만</b> 남깁니다. 돈을 돌려받으시려면 <b>이체 요청</b>에서 본인 계좌로 정산 신청을 따로 해주세요.<br><button class="btn btn-sm btn-line" style="margin-top:7px" onclick="closeModal();go('payout');openPayoutForm({category:'경비정산'})">이체 요청으로 이동 ↗</button></div>`
+    :'';
+}
+function openExpenseForm(seed){
+  seed=seed||{};
+  const meth=EMETHODS.map(([k,l])=>`<option value="${k}" ${seed.method===k?'selected':''}>${escH(l)}</option>`).join('');
+  const cats=CATEGORIES.filter(x=>x!=='유류비').map(x=>`<option ${seed.category===x?'selected':''}>${x}</option>`).join('');
+  const cur=CURRENCIES.map(x=>`<option ${seed.unit===x?'selected':''}>${x}</option>`).join('');
+  modal('지출결의 등록','wide',`<div class="policy"><b>📌 지출결의는 "이미 나간 돈"을 기록하는 절차예요.</b><br>새로 이체가 필요하면 <b>이체 요청</b>, 개인 명의 법인카드는 <b>기명 법카 신고</b> 탭을 이용해 주세요.</div>
+    <div class="t-sub" style="margin:0 0 12px">신청인: <b>${escH(ME().name)}</b>${ME().team?' · '+escH(normalizeTeam(ME().team)):''} <span style="color:var(--gray)">(등록 시 자동 기록)</span></div>
+    <div class="f2"><div class="form-row"><label>결제수단 <span class="req">*</span></label><select class="input" id="e_method" onchange="expMethodChange()">${meth}</select></div><div class="form-row"><label>사용일 <span class="req">*</span></label><input class="input" type="date" id="e_date" value="${seed.spentDate||today()}"></div></div>
+    <div class="form-row"><label>사용처 <span class="req">*</span><span class="hint">카드전표·영수증에 찍힌 가맹점명 그대로</span></label><input class="input" id="e_merchant" value="${escH(seed.merchant||'')}" placeholder="예: 쿠팡 / 스타벅스 역삼점"></div>
+    <div class="f2"><div class="form-row"><label>금액 <span class="req">*</span></label><input class="input num" id="e_amount" value="${seed.amount?won(seed.amount):''}" placeholder="0" oninput="this.value=comma(this.value)"></div><div class="form-row"><label>통화</label><select class="input" id="e_unit">${cur}</select></div></div>
+    <div class="form-row"><label>분류</label><select class="input" id="e_cat">${cats}</select></div>
+    <div class="form-row"><label>사용 목적 <span class="req">*</span></label><textarea class="input" id="e_purpose" placeholder="예: 촬영용 소품 구매 / 브랜드팀 주간회의 다과">${escH(seed.purpose||'')}</textarea></div>
+    <div class="form-row"><label>동반 인원<span class="hint">선택 · 식대·접대성 지출은 적어주시면 나중에 소명하기 쉬워요</span></label><input class="input" id="e_attend" value="${escH(seed.attendees||'')}" placeholder="예: 브랜드팀 5명"></div>
+    ${expProofBoxHtml(seed)}
+    <div id="e_note"></div>
+  `,`<button class="btn btn-secondary" onclick="closeModal()">취소</button><button class="btn btn-primary" onclick="submitExpense(false)">결의 등록</button>`);
+  if(seed.unit)document.getElementById('e_unit').value=seed.unit;
+  expMethodChange();expProofChange();
+}
+function lastCardOf(name){const r=DB.expense.find(x=>x.method==='named_card'&&x.cardHolder===name&&x.cardLast4);return r?r.cardLast4:'';}
+function openCardForm(seed){
+  seed=seed||{};
+  const cats=CATEGORIES.map(x=>`<option ${seed.category===x?'selected':''}>${x}</option>`).join('');
+  const cur=CURRENCIES.map(x=>`<option ${seed.unit===x?'selected':''}>${x}</option>`).join('');
+  modal('기명 법카 사용 신고','wide',`<div class="policy" style="background:var(--billy-blue-50);border-color:var(--billy-blue-100)"><b style="color:var(--billy-blue)">💳 개인 명의 법인카드 사용 신고</b><br>등록하시면 <b>${escH(CARD_REPORT_TO)}님</b>께 전달됩니다. 공용 법인카드는 <b>지출결의</b> 탭을 이용해 주세요.</div>
+    <div class="f2"><div class="form-row"><label>카드 명의자 <span class="req">*</span></label><input class="input" id="e_holder" value="${escH(seed.cardHolder||ME().name)}"></div><div class="form-row"><label>카드번호 뒤 4자리 <span class="req">*</span></label><input class="input num" id="e_last4" value="${escH(seed.cardLast4||lastCardOf(ME().name))}" maxlength="4" placeholder="4417" oninput="this.value=this.value.replace(/[^0-9]/g,'')"></div></div>
+    <div class="f2"><div class="form-row"><label>사용일 <span class="req">*</span></label><input class="input" type="date" id="e_date" value="${seed.spentDate||today()}"></div><div class="form-row"><label>분류</label><select class="input" id="e_cat">${cats}</select></div></div>
+    <div class="form-row"><label>사용처 <span class="req">*</span><span class="hint">카드 이용내역에 찍힌 가맹점명 그대로</span></label><input class="input" id="e_merchant" value="${escH(seed.merchant||'')}" placeholder="예: GS칼텍스 논현점"></div>
+    <div class="f2"><div class="form-row"><label>금액 <span class="req">*</span></label><input class="input num" id="e_amount" value="${seed.amount?won(seed.amount):''}" placeholder="0" oninput="this.value=comma(this.value)"></div><div class="form-row"><label>통화</label><select class="input" id="e_unit">${cur}</select></div></div>
+    <div class="form-row"><label>사용 목적 <span class="req">*</span></label><textarea class="input" id="e_purpose" placeholder="예: 베이비페어 부스 설치 이동">${escH(seed.purpose||'')}</textarea></div>
+    <div class="form-row"><label>동반 인원<span class="hint">선택 · 식대·접대성 지출은 적어주시면 나중에 소명하기 쉬워요</span></label><input class="input" id="e_attend" value="${escH(seed.attendees||'')}" placeholder="예: M&amp;E팀 3명"></div>
+    ${expProofBoxHtml(seed,'카드전표')}
+  `,`<button class="btn btn-secondary" onclick="closeModal()">취소</button><button class="btn btn-primary" onclick="submitExpense(true)">신고 등록</button>`);
+  if(seed.unit)document.getElementById('e_unit').value=seed.unit;
+  expProofChange();
+}
+function submitExpense(named){
+  const pt=val('e_prooftype');
+  const r={id:uid('e'),requester:ME().name,team:ME().team,
+    method:named?'named_card':(val('e_method')||'corp_card'),
+    cardLast4:named?digits(val('e_last4')).slice(-4):'',
+    cardHolder:named?(val('e_holder')||ME().name):'',
+    spentDate:val('e_date')||today(),merchant:val('e_merchant'),amount:numVal('e_amount'),
+    unit:val('e_unit')||'원',category:val('e_cat'),purpose:val('e_purpose'),attendees:val('e_attend'),
+    proofType:pt,proofUrl:val('e_proofurl'),proofReason:pt==='none'?val('e_proofreason'):'',
+    status:'requested',applied:today()};
+  if(!r.merchant||!r.amount){toast('사용처와 금액은 필수예요.','err');return;}
+  if(!r.purpose){toast('사용 목적을 적어주세요. 나중에 소명할 때 꼭 필요해요.','err');return;}
+  if(named&&r.cardLast4.length<4){toast('카드번호 뒤 4자리를 입력해 주세요.','err');return;}
+  if(!pt){toast('증빙 유형을 선택해 주세요.','err');return;}
+  if(pt==='명세서'&&!r.proofUrl){toast('거래명세서·영수증은 증빙 링크(Dropbox)가 필요해요.','err');return;}
+  if(pt==='none'&&!r.proofReason){toast('증빙 없음 사유를 적어주세요.','err');return;}
+  if(isLockedMonth(r.spentDate)){toast(r.spentDate.slice(0,7)+'은 마감되어 등록할 수 없어요.','err');return;}
+  sv('fin_submit_expense',{p:expensePayload(r)},()=>{DB.expense.unshift(r);}).then(()=>{
+    closeModal();current=named?'cardreport':'expense';render();
+    toast(named?('기명 법카 사용 내역을 신고했어요. '+CARD_REPORT_TO+'님께 전달됩니다.'):'지출결의를 등록했어요.','ok');
+  });
+}
+/* 기명 법카 일괄 신고 — 카드사 이용내역 붙여넣기 */
+function normDate(s){const m=String(s||'').match(/(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/);return m?(m[1]+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[3]).slice(-2)):'';}
+function openCardBulkForm(){
+  modal('기명 법카 일괄 신고','wide',`<div class="policy" style="background:var(--billy-blue-50);border-color:var(--billy-blue-100)"><b style="color:var(--billy-blue)">📥 카드사 이용내역 복사 → 아래에 붙여넣기</b><br>한 줄에 하나씩, <b>사용일 · 사용처 · 금액 · 사용 목적</b> 순서예요. (탭 구분, 엑셀에서 복사하면 그대로 맞습니다)<br>증빙 유형은 <b>신용카드 전표</b>로, 분류는 아래에서 고른 값으로 일괄 적용돼요. 개별 수정은 등록 후 각 건을 열어서 하시면 됩니다.</div>
+    <div class="f2"><div class="form-row"><label>카드 명의자 <span class="req">*</span></label><input class="input" id="cb_holder" value="${escH(ME().name)}"></div><div class="form-row"><label>카드번호 뒤 4자리 <span class="req">*</span></label><input class="input num" id="cb_last4" value="${escH(lastCardOf(ME().name))}" maxlength="4" placeholder="4417" oninput="this.value=this.value.replace(/[^0-9]/g,'')"></div></div>
+    <div class="form-row"><label>분류 (일괄 적용)</label><select class="input" id="cb_cat">${CATEGORIES.map(x=>`<option ${x==='기타'?'selected':''}>${x}</option>`).join('')}</select></div>
+    <div class="form-row"><textarea class="input" id="cb_data" style="min-height:170px;font-family:monospace;font-size:12.5px" placeholder="2026-08-01	GS칼텍스 논현점	74,000	부스 설치 이동&#10;2026-08-03	배달의민족	52,300	야근 식대" oninput="cardBulkPreview()"></textarea></div>
+    <div id="cb_pv" class="preview-box" style="display:none"></div>
+  `,`<button class="btn btn-secondary" onclick="closeModal()">취소</button><button class="btn btn-primary" onclick="submitCardBulk()">일괄 신고</button>`);
+}
+/* 금액에 콤마가 섞여 있어서 콤마 분리는 쓰지 않는다 — 탭 우선, 없으면 공백 2칸 이상 */
+function parseCardBulk(){
+  const out=[];
+  val('cb_data').split(/\r?\n/).forEach(line=>{
+    if(!line.trim())return;
+    const c=(line.indexOf('\t')>=0?line.split(/\t/):line.split(/\s{2,}/)).map(s=>s.trim());
+    if(c.length<3)return;
+    out.push({spentDate:normDate(c[0]),merchant:c[1]||'',amount:Number((c[2]||'').replace(/[^0-9]/g,''))||0,purpose:c[3]||''});
+  });
+  return out;
+}
+function cardBulkPreview(){
+  const el=document.getElementById('cb_pv');if(!el)return;
+  const all=parseCardBulk();const rows=all.filter(r=>r.spentDate&&r.merchant&&r.amount);
+  if(!rows.length){el.style.display='none';return;}
+  const skipped=all.length-rows.length;
+  el.style.display='flex';
+  el.innerHTML=`<span>인식된 건수</span><b>${rows.length}건 · 합계 ${won(rows.reduce((s,r)=>s+r.amount,0))}원</b>${skipped?`<span style="color:var(--sys-red);margin-left:8px">인식 실패 ${skipped}줄</span>`:''}`;
+}
+function submitCardBulk(){
+  const holder=val('cb_holder')||ME().name,last4=digits(val('cb_last4')).slice(-4),cat=val('cb_cat')||'기타';
+  const rows=parseCardBulk().filter(r=>r.spentDate&&r.merchant&&r.amount);
+  if(last4.length<4){toast('카드번호 뒤 4자리를 입력해 주세요.','err');return;}
+  if(!rows.length){toast('붙여넣은 데이터를 확인해 주세요 (사용일·사용처·금액이 필요해요).','err');return;}
+  const locked=rows.find(r=>isLockedMonth(r.spentDate));
+  if(locked){toast(locked.spentDate.slice(0,7)+'은 마감되어 등록할 수 없어요.','err');return;}
+  const mk=r=>({id:uid('e'),requester:ME().name,team:ME().team,method:'named_card',cardLast4:last4,cardHolder:holder,
+    spentDate:r.spentDate,merchant:r.merchant,amount:r.amount,unit:'원',category:cat,purpose:r.purpose,attendees:'',
+    proofType:'카드전표',proofUrl:'',proofReason:'',status:'requested',applied:today()});
+  const done=()=>{closeModal();current='cardreport';render();toast(rows.length+'건 신고했어요. '+CARD_REPORT_TO+'님께 전달됩니다.','ok');};
+  if(IS_SUPA)Promise.all(rows.map(r=>sb.rpc('fin_submit_expense',{p:expensePayload(mk(r))}))).then(()=>loadData()).then(done).catch(()=>toast('일부 등록 실패','err'));
+  else{rows.forEach(r=>DB.expense.unshift(mk(r)));done();}
+}
+/* ── 상세 · 처리 ── */
+function viewExpense(id){
+  const r=DB.expense.find(x=>x.id===id);if(!r)return;
+  const st=ESTATUS[r.status]||['?',''];const named=r.method==='named_card';
+  let foot=`<button class="btn btn-line btn-sm" onclick="closeModal();cloneExpense('${id}')">${I.copy}<span>복제</span></button><button class="btn btn-secondary" onclick="closeModal()">닫기</button>`;
+  if(canApprove()&&r.status==='requested')foot=`<button class="btn btn-danger" onclick="decideExpense('${id}','rejected')">반려</button><button class="btn btn-primary" onclick="decideExpense('${id}','confirmed')">${named?'확인 완료':'결의 완료'}</button>`;
+  const card=named?`<dt>카드</dt><dd>${escH(r.cardHolder||'-')} 명의 · 끝 ${escH(r.cardLast4||'----')}</dd><dt>신고 대상</dt><dd>${escH(CARD_REPORT_TO)}님</dd>`:'';
+  modal(named?'기명 법카 사용 신고 상세':'지출결의 상세','',`<div class="dl">
+    <dt>상태</dt><dd><span class="badge ${st[1]}">${st[0]}</span></dd>
+    <dt>결제수단</dt><dd>${escH(EMETHOD_LABEL[r.method]||r.method)}</dd>
+    ${card}
+    <dt>사용일</dt><dd>${escH(r.spentDate||'-')}</dd>
+    <dt>사용처</dt><dd>${escH(r.merchant)}</dd>
+    <dt>금액</dt><dd><b>${won(r.amount)} ${escH(r.unit)}</b></dd>
+    <dt>분류</dt><dd>${escH(r.category||'-')}</dd>
+    <dt>사용 목적</dt><dd>${escH(r.purpose||'-')}</dd>
+    ${r.attendees?`<dt>동반 인원</dt><dd>${escH(r.attendees)}</dd>`:''}
+    <dt>증빙</dt><dd>${expProofTag(r)}${(r.proofType==='none'&&r.proofReason)?' <span class="t-sub">— '+escH(r.proofReason)+'</span>':''}</dd>
+    <dt>신청인</dt><dd>${escH(r.requester||'-')}${r.team?' · '+escH(normalizeTeam(r.team)):''}</dd>
+    <dt>등록일</dt><dd>${escH(r.applied||'-')}</dd>
+    ${r.rejectReason?`<dt>반려 사유</dt><dd>${escH(r.rejectReason)}</dd>`:''}
+  </div>`,foot);
+}
+function decideExpense(id,status){
+  sv('fin_decide_expense',{p_id:id,p_status:status,p_reason:''},()=>{const r=DB.expense.find(x=>x.id===id);if(r)r.status=status;})
+    .then(()=>{closeModal();render();toast(status==='confirmed'?'확인 처리했어요.':'반려했어요.',status==='rejected'?'err':'ok');});
+}
+function cancelExpense(id){
+  confirmModal('철회','이 건을 철회할까요?',()=>{
+    sv('fin_cancel_expense',{p_id:id},()=>{const r=DB.expense.find(x=>x.id===id);if(r)r.status='canceled';}).then(()=>{render();toast('철회했어요.');});
+  });
+}
+function cloneExpense(id){
+  const r=DB.expense.find(x=>x.id===id);if(!r)return;
+  const s={method:r.method,cardLast4:r.cardLast4,cardHolder:r.cardHolder,merchant:r.merchant,amount:r.amount,unit:r.unit,category:r.category,purpose:r.purpose,attendees:r.attendees,proofType:r.proofType};
+  if(r.method==='named_card')openCardForm(s);else openExpenseForm(s);
+  toast('과거 내역을 복제했어요. 사용일과 금액을 확인해 주세요.','ok');
+}
+function openExpStatusMenu(id,ev){
+  ev.stopPropagation();closeStatusMenu();
+  const r=DB.expense.find(x=>x.id===id);if(!r)return;
+  const opts=[['requested','결의 대기'],['confirmed','결의 완료'],['rejected','반려'],['canceled','철회']];
+  const m=document.createElement('div');m.className='statusmenu';m.id='statusMenu';
+  m.innerHTML=opts.map(([k,label])=>`<button class="statusopt ${r.status===k?'cur':''}" onclick="setExpenseStatus('${id}','${k}')"><span class="badge ${ESTATUS[k][1]}">${label}</span>${r.status===k?'<span class="t-sub" style="margin-left:auto">현재</span>':''}</button>`).join('');
+  document.body.appendChild(m);
+  const mw=180,mh=opts.length*40+14;let x=ev.clientX,y=ev.clientY+8;
+  x=Math.min(x,window.innerWidth-mw-8);y=Math.min(y,window.innerHeight-mh-8);
+  m.style.left=Math.max(8,x)+'px';m.style.top=Math.max(8,y)+'px';
+  const bd=document.createElement('div');bd.className='statusbackdrop';bd.id='statusBackdrop';bd.onclick=closeStatusMenu;document.body.appendChild(bd);
+}
+function setExpenseStatus(id,status){
+  closeStatusMenu();
+  const r=DB.expense.find(x=>x.id===id);if(!r||r.status===status)return;
+  sv('fin_set_expense_status',{p_id:id,p_status:status},()=>{r.status=status;}).then(()=>{render();toast('상태를 '+ESTATUS[status][0]+'(으)로 바꿨어요.','ok');});
+}
+function exportExpenseList(named){
+  const ss=expList(!!named);
+  if(!ss.length){toast('내보낼 항목이 없어요.','err');return;}
+  loadXLSX().then(function(){
+    const head=named?['사용일','명의자','카드 끝4','사용처','금액','통화','분류','사용 목적','동반 인원','증빙','상태','팀']
+                    :['사용일','결제수단','사용처','금액','통화','분류','사용 목적','동반 인원','증빙','상태','신청인','팀'];
+    const data=ss.map(r=>{
+      const proof=r.proofType?(PROOF_LABEL[r.proofType]||r.proofType):'미기재';
+      const stat=(ESTATUS[r.status]||[''])[0];
+      return named?[r.spentDate,r.cardHolder,r.cardLast4,r.merchant,r.amount,r.unit,r.category,r.purpose,r.attendees,proof,stat,normalizeTeam(r.team)]
+                  :[r.spentDate,EMETHOD_LABEL[r.method]||r.method,r.merchant,r.amount,r.unit,r.category,r.purpose,r.attendees,proof,stat,r.requester,normalizeTeam(r.team)];
+    });
+    const ws=XLSX.utils.aoa_to_sheet([head].concat(data));
+    ws['!cols']=head.map(h=>({wch:(h==='사용 목적'?28:(h==='사용처'?20:12))}));
+    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,named?'기명법카신고':'지출결의');
+    XLSX.writeFile(wb,(named?'기명법카_사용신고_':'지출결의_')+today()+'.xlsx');
+    toast(ss.length+'건 엑셀 다운로드.','ok');
+  }).catch(()=>toast('엑셀 로드 실패','err'));
+}
 /* ===================== 세금계산서 ===================== */
 function invoiceDeadline(w){if(!w)return null;const d=new Date(w);return new Date(d.getFullYear(),d.getMonth()+1,10);}
 function deadlineBadge(w){const dl=invoiceDeadline(w);if(!dl)return '';const left=Math.round((dl-new Date(today()))/86400000);if(left<0)return `<span class="flag warn" title="익월 10일 초과 — 가산세">⛔ 발행기한 초과</span>`;if(left<=3)return `<span class="flag caution" title="익월 10일까지">⏰ 발행기한 D-${left}</span>`;return '';}
@@ -1170,28 +1485,33 @@ async function loadMe(){
 function _mapPayout(r){return {id:r.id,requester:r.requester_name,team:r.team,payee:r.payee,bank:r.bank,account:r.account,amount:Number(r.amount)||0,unit:r.currency||'원',category:r.category,purpose:r.purpose,evidence:r.evidence_url,hasTax:r.has_tax,proofType:r.proof_type||'',proofDate:r.proof_date||'',proofStatus:r.proof_status||'',proofReason:r.proof_none_reason||'',proofReceivedAt:r.proof_received_at||'',status:r.status,paidAt:r.paid_date||'',applied:(r.created_at||'').slice(0,10),wh:r.wh,fuel:r.fuel};}
 function _mapInvoice(r){return {id:r.id,requester:r.requester_name,team:r.team,saleType:r.sale_type,bizNo:r.biz_no,company:r.company,ceo:r.ceo,email:r.email,writeDate:r.write_date,itemName:r.item_name,supply:Number(r.supply)||0,tax:Number(r.vat)||0,total:Number(r.total)||0,evidence:r.evidence_url,status:r.status,applied:(r.created_at||'').slice(0,10),issuedAt:r.issued_date||''};}
 function _mapCoupon(r){return {id:r.id,requester:r.requester_name,requesterEmail:r.requester_email,team:r.team,name:r.recipient_name,phone:r.recipient_phone,phoneNorm:r.recipient_phone_norm,amount:Number(r.amount)||0,code:r.code||'',status:r.status,hold:r.hold_reason||'',isOverride:r.is_override,memo:r.memo||'',createdAt:(r.created_at||'').slice(0,10)};}
+function _mapExpense(r){return {id:r.id,requester:r.requester_name,requesterEmail:r.requester_email,team:r.team,method:r.method,cardLast4:r.card_last4||'',cardHolder:r.card_holder||'',spentDate:r.spent_date||'',merchant:r.merchant,amount:Number(r.amount)||0,unit:r.currency||'원',category:r.category||'',purpose:r.purpose||'',attendees:r.attendees||'',proofType:r.proof_type||'',proofUrl:r.proof_url||'',proofReason:r.proof_none_reason||'',status:r.status,rejectReason:r.reject_reason||'',decidedBy:r.decided_by||'',applied:(r.created_at||'').slice(0,10)};}
 async function fetchAllRows(factory){const PAGE=1000;let from=0,all=[];for(;;){const{data,error}=await factory().range(from,from+PAGE-1);if(error)throw error;all=all.concat(data||[]);if(!data||data.length<PAGE)break;from+=PAGE;}return all;}
 async function loadData(){
   if(!IS_SUPA)return;
-  const[po,iv,ve,rc,lo,cp]=await Promise.all([
+  const[po,iv,ve,rc,lo,cp,ex]=await Promise.all([
     fetchAllRows(()=>sb.from('fin_payouts').select('*').order('created_at',{ascending:false})),
     fetchAllRows(()=>sb.from('fin_invoices').select('*').order('created_at',{ascending:false})),
     fetchAllRows(()=>sb.from('fin_vendors').select('*, accounts:fin_vendor_accounts(*)').order('tx_count',{ascending:false})),
     sb.from('fin_recurring').select('*'),
     sb.from('fin_locks').select('ym'),
-    fetchAllRows(()=>sb.from('fin_coupon_issues').select('*').order('created_at',{ascending:false}))]);
+    fetchAllRows(()=>sb.from('fin_coupon_issues').select('*').order('created_at',{ascending:false})),
+    fetchAllRows(()=>sb.from('fin_expenses').select('*').order('spent_date',{ascending:false})).catch(()=>null)]);
   DB.payout=po.map(_mapPayout);
   DB.invoice=iv.map(_mapInvoice);
+  EXPENSE_READY=(ex!==null);DB.expense=EXPENSE_READY?ex.map(_mapExpense):[];
   VENDORS.length=0;ve.forEach(v=>VENDORS.push({id:v.id,name:v.name,bizNo:v.biz_no,email:v.email,team:v.team,unit:v.unit||'원',cnt:v.tx_count||0,avg:Number(v.avg_amount)||0,max:Number(v.max_amount)||0,lastDate:v.last_date||'',bankbookUrl:v.bankbook_url||'',bizregUrl:v.bizreg_url||'',accounts:(v.accounts||[]).map(a=>({id:a.id,bank:a.bank,account:a.account,holder:a.holder,primary:a.is_primary})).sort((a,b)=>(b.primary?1:0)-(a.primary?1:0))}));
   DB.templates=(rc.data||[]).map(t=>({id:t.id,payee:t.payee,bank:t.bank,account:t.account,amount:Number(t.amount)||0,category:t.category,total:t.total,done:t.done,nextDate:t.next_date,requester:t.requester_name,team:t.team}));
   LOCKED=new Set((lo.data||[]).map(x=>x.ym));
   DB.coupons=(cp||[]).map(_mapCoupon);
   try{const{data:stk}=await sb.rpc('fin_coupon_stock');COUPON_STOCK=Number(stk)||0;}catch(e){COUPON_STOCK=0;}
+  try{const{data:crt}=await sb.rpc('fin_card_report_to');if(crt)CARD_REPORT_TO=crt;}catch(e){}
   MEMOS={};try{const{data:mm}=await sb.from('fin_memos').select('*').order('created_at',{ascending:true});(mm||[]).forEach(m=>{(MEMOS[m.payout_id]=MEMOS[m.payout_id]||[]).push({id:m.id,author:m.author_name||'',body:m.body,at:(m.created_at||'').slice(0,16).replace('T',' ')});});}catch(e){}
 }
 /* 저장: 실모드=RPC→새로고침 / 데모=mockFn */
 function sv(rpc,args,mockFn){if(!IS_SUPA){if(mockFn)mockFn();return Promise.resolve(true);}return sb.rpc(rpc,args).then(({data,error})=>{if(error){toast(error.message||'오류가 났어요','err');throw error;}return loadData();});}
 function payoutPayload(r,recurTotal){return {payee:r.payee,bank:r.bank,account:r.account,amount:r.amount,unit:r.unit,category:r.category,purpose:r.purpose,evidence:r.evidence||'',hasTax:!!r.hasTax,proofType:r.proofType||'',proofDate:r.proofDate||'',proofStatus:r.proofStatus||'',proofReason:r.proofReason||'',wh:r.wh||null,fuel:r.fuel||null,requester_name:ME().name,team:ME().team,recurTotal:recurTotal||0};}
+function expensePayload(r){return {method:r.method,cardLast4:r.cardLast4||'',cardHolder:r.cardHolder||'',spentDate:r.spentDate,merchant:r.merchant,amount:r.amount,unit:r.unit||'원',category:r.category||'',purpose:r.purpose||'',attendees:r.attendees||'',proofType:r.proofType||'',proofUrl:r.proofUrl||'',proofReason:r.proofReason||'',requester_name:ME().name,team:ME().team};}
 function invoicePayload(r){return {company:r.company,bizNo:r.bizNo,ceo:r.ceo,email:r.email,saleType:r.saleType,writeDate:r.writeDate,itemName:r.itemName,supply:r.supply,vat:r.tax,total:r.total,evidence:r.evidence||'',requester_name:ME().name,team:ME().team};}
 /* ── 로그인 (이메일 OTP) ── */
 let _loginEmail='';
