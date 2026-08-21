@@ -318,7 +318,19 @@ function digits(s){return String(s||'').replace(/[^0-9]/g,'');}
 /* 사람 이름이 좁은 칸에서 줄바꿈될 때 성 단위로만 끊기게(홍/찬주). .nmcell(word-break:keep-all)과 함께 사용. */
 const _SUR2=['남궁','선우','독고','황보','제갈','사공','서문','동방','어금','망절','등정'];
 function nameWrap(s){s=String(s||'');if(!/^[가-힣]{2,5}$/.test(s))return escH(s);var cut=_SUR2.indexOf(s.slice(0,2))>=0?2:1;return escH(s.slice(0,cut))+'<wbr>'+escH(s.slice(cut));}
-const BANKS=['국민','신한','우리','하나','기업','농협','SC제일','카카오뱅크','토스뱅크','케이뱅크','새마을금고','우체국','부산','경남','대구','산업','씨티'];
+/* 은행명 — IBK 기업은행 입금계좌은행 분류 기준 */
+const BANKS=['기업은행','국민은행','우리은행','신한은행','하나은행','농협은행','지역농축협','SC은행','한국씨티은행','우체국','경남은행','광주은행','iM[구 대구은행]','도이치','부산은행','산림조합','산업은행','저축은행','새마을금고','수협','신협','전북은행','제주은행','BOA','HSBC','JP모간','중국공상은행','비엔피파리바은행','중국건설은행','중국은행','카카오뱅크','케이뱅크','토스뱅크','교보증권','대신증권','미래에셋증권','DB증권','유안타증권','메리츠증권','부국증권','삼성증권','신영증권','신한투자증권','NH투자증권','유진투자증권','LS증권','키움증권','하나증권','아이엠증권','한국투자','한화투자증권','KB증권','현대차증권','케이프투자증권','SK증권','카카오페이증권','BNK투자증권','IBK투자증권','다올투자증권','상상인증권','우리투자증권','토스증권'];
+const BANK_ALIAS={'KB':'국민은행','KB국민':'국민은행','KB국민은행':'국민은행','IBK':'기업은행','IBK기업':'기업은행','IBK기업은행':'기업은행','KEB하나':'하나은행','KEB하나은행':'하나은행','NH':'농협은행','NH농협':'농협은행','NH농협은행':'농협은행','농축협':'지역농축협','단위농협':'지역농축협','SC':'SC은행','SC제일':'SC은행','SC제일은행':'SC은행','제일은행':'SC은행','씨티':'한국씨티은행','씨티은행':'한국씨티은행','시티':'한국씨티은행','시티은행':'한국씨티은행','대구':'iM[구 대구은행]','대구은행':'iM[구 대구은행]','iM':'iM[구 대구은행]','iM뱅크':'iM[구 대구은행]','아이엠뱅크':'iM[구 대구은행]','KDB':'산업은행','KDB산업은행':'산업은행','수협은행':'수협','신협은행':'신협','우체국은행':'우체국','카카오':'카카오뱅크','토스':'토스뱅크','케이':'케이뱅크','K뱅크':'케이뱅크','저축':'저축은행','상호저축은행':'저축은행','산림':'산림조합','산림조합중앙회':'산림조합','도이치은행':'도이치','JP모건':'JP모간','BNP파리바':'비엔피파리바은행','뱅크오브아메리카':'BOA'};
+function normBank(b){
+  b=String(b||'').trim();if(!b)return b;
+  if(BANKS.includes(b))return b;
+  if(BANK_ALIAS[b])return BANK_ALIAS[b];
+  const s=b.replace(/\s/g,'');
+  if(BANKS.includes(s))return s;
+  if(BANK_ALIAS[s])return BANK_ALIAS[s];
+  if(BANKS.includes(s+'은행'))return s+'은행'; /* 국민→국민은행, 우리→우리은행 등 */
+  return b;
+}
 const CATEGORIES=['외주·용역비','물품대금','광고·마케팅비','유류비','환불','임대료','복리후생','경비정산','구독료','기타'];
 const CURRENCIES=['원','USD','JPY','EUR'];
 const PSTATUS={requested:['지급대기','badge-pending'],paid:['지급완료','badge-paid'],rejected:['반려','badge-rejected'],canceled:['취소','badge-canceled']};
@@ -738,6 +750,7 @@ function renderPayout(){
 }
 function openPayoutForm(seed){
   seed=seed||{};
+  if(seed.bank)seed.bank=normBank(seed.bank);
   const banks=BANKS.map(b=>`<option ${seed.bank===b?'selected':''}>${b}</option>`).join('');
   const cats=CATEGORIES.filter(x=>x!=='유류비').map(x=>`<option ${seed.category===x?'selected':''}>${x}</option>`).join('');
   const cur=CURRENCIES.map(x=>`<option ${seed.unit===x?'selected':''}>${x}</option>`).join('');
@@ -780,7 +793,7 @@ function renderPayeeList(filter){
   const norm=s=>String(s||'').replace(/\(주\)|주식회사|\s|㈜/g,'').toLowerCase();
   const k=norm(filter);
   const items=VENDORS.map((v,i)=>({v,i})).filter(x=>!k||norm(x.v.name).includes(k));
-  box.innerHTML=items.length?items.map(({v,i})=>{const pa=(v.accounts||[]).find(a=>a.primary)||(v.accounts||[])[0];return `<div class="pli" onmousedown="event.preventDefault();pickPayeeIdx(${i})"><b>${escH(v.name)}</b><span class="psub">${pa?escH(pa.bank)+' '+escH(pa.account):'등록 계좌 없음'}</span></div>`;}).join(''):'<div class="pli pnone">일치하는 거래처가 없어요</div>';
+  box.innerHTML=items.length?items.map(({v,i})=>{const pa=(v.accounts||[]).find(a=>a.primary)||(v.accounts||[])[0];return `<div class="pli" onmousedown="event.preventDefault();pickPayeeIdx(${i})"><b>${escH(v.name)}</b><span class="psub">${pa?escH(normBank(pa.bank))+' '+escH(pa.account):'등록 계좌 없음'}</span></div>`;}).join(''):'<div class="pli pnone">일치하는 거래처가 없어요</div>';
 }
 function pickPayeeIdx(i){const v=VENDORS[i];if(!v)return;document.getElementById('f_payee').value=v.name;showPayeeList(false);onPayeePick();}
 document.addEventListener('mousedown',e=>{const box=document.getElementById('payeeList');if(box&&box.style.display==='block'&&!e.target.closest('.payeewrap'))showPayeeList(false);});
@@ -790,10 +803,11 @@ function onPayeePick(){
   const v=findVendor(val('f_payee'));
   const pa=v?(v.accounts.find(a=>a.primary)||v.accounts[0]):null;
   if(v&&pa){
-    bankEl.value=pa.bank;accEl.value=pa.account;
+    const nb=normBank(pa.bank);
+    bankEl.value=nb;accEl.value=pa.account;
     document.getElementById('f_unit').value=v.unit;
     if(bz&&v.bizNo)bz.value=v.bizNo;
-    _payeeAuto={bank:pa.bank,account:pa.account,bizNo:v.bizNo||''};
+    _payeeAuto={bank:nb,account:pa.account,bizNo:v.bizNo||''};
   }else{
     if(_payeeAuto){
       if(accEl.value===_payeeAuto.account)accEl.value='';
@@ -1386,7 +1400,7 @@ function approveVendorForm(idx){const p=(window._pendVendors||[])[idx];if(!p)ret
   modal('신규 거래처 등록','wide',`<div class="policy" style="background:var(--billy-blue-50);border-color:var(--billy-blue-100)"><b style="color:var(--billy-blue)">🆕 첫 거래처 등록</b> — 통장사본·사업자등록증(또는 신분증) 확인 후 등록하면, 다음 이체부터 자동 인식돼요.</div>
     <div class="f2"><div class="form-row"><label>거래처명 <span class="req">*</span></label><input class="input" id="nv_name" value="${escH(p.payee)}"></div><div class="form-row"><label>사업자등록번호</label><input class="input num" id="nv_biz" placeholder="10자리(선택)" maxlength="10"></div></div>
     <div class="f2"><div class="form-row"><label>팀</label><select class="input" id="nv_team"><option value="">-</option>${TEAMS_ALL.map(t=>`<option>${t}</option>`).join('')}</select></div><div class="form-row"><label>통화</label><select class="input" id="nv_unit">${CURRENCIES.map(u=>`<option ${p.unit===u?'selected':''}>${u}</option>`).join('')}</select></div></div>
-    <div class="f2"><div class="form-row"><label>은행</label><select class="input" id="nv_bank">${BANKS.map(b=>`<option ${p.bank===b?'selected':''}>${b}</option>`).join('')}</select></div><div class="form-row"><label>계좌번호</label><input class="input num" id="nv_acc" value="${escH(p.account||'')}"></div></div>
+    <div class="f2"><div class="form-row"><label>은행</label><select class="input" id="nv_bank">${BANKS.map(b=>`<option ${normBank(p.bank)===b?'selected':''}>${b}</option>`).join('')}</select></div><div class="form-row"><label>계좌번호</label><input class="input num" id="nv_acc" value="${escH(p.account||'')}"></div></div>
     <div class="form-row"><label>예금주</label><input class="input" id="nv_holder" value="${escH(p.payee)}"></div>
     <div class="form-row"><label>📎 통장 사본 (Dropbox)</label><input class="input" id="nv_bankbook" value="${escH(p.evidence||'')}" placeholder="https://www.dropbox.com/..."></div>
     <div class="form-row"><label>📎 사업자등록증 / 신분증 (Dropbox)</label><input class="input" id="nv_bizreg" placeholder="https://www.dropbox.com/..."></div>
@@ -1531,7 +1545,7 @@ async function loadMe(){
   if(!name)name=(email.split('@')[0]||'사용자');
   SUPA_USER={email,role,name,team,av:(name||'·').slice(0,1),rl:roleLabel(role)};ROLE=role;
 }
-function _mapPayout(r){return {id:r.id,requester:r.requester_name,team:r.team,payee:r.payee,bank:r.bank,account:r.account,amount:Number(r.amount)||0,unit:r.currency||'원',category:r.category,purpose:r.purpose,evidence:r.evidence_url,hasTax:r.has_tax,proofType:r.proof_type||'',proofDate:r.proof_date||'',proofStatus:r.proof_status||'',proofReason:r.proof_none_reason||'',proofReceivedAt:r.proof_received_at||'',status:r.status,paidAt:r.paid_date||'',applied:(r.created_at||'').slice(0,10),wh:r.wh,fuel:r.fuel};}
+function _mapPayout(r){return {id:r.id,requester:r.requester_name,team:r.team,payee:r.payee,bank:normBank(r.bank),account:r.account,amount:Number(r.amount)||0,unit:r.currency||'원',category:r.category,purpose:r.purpose,evidence:r.evidence_url,hasTax:r.has_tax,proofType:r.proof_type||'',proofDate:r.proof_date||'',proofStatus:r.proof_status||'',proofReason:r.proof_none_reason||'',proofReceivedAt:r.proof_received_at||'',status:r.status,paidAt:r.paid_date||'',applied:(r.created_at||'').slice(0,10),wh:r.wh,fuel:r.fuel};}
 function _mapInvoice(r){return {id:r.id,requester:r.requester_name,team:r.team,saleType:r.sale_type,bizNo:r.biz_no,company:r.company,ceo:r.ceo,email:r.email,writeDate:r.write_date,itemName:r.item_name,supply:Number(r.supply)||0,tax:Number(r.vat)||0,total:Number(r.total)||0,evidence:r.evidence_url,status:r.status,applied:(r.created_at||'').slice(0,10),issuedAt:r.issued_date||''};}
 function _mapCoupon(r){return {id:r.id,requester:r.requester_name,requesterEmail:r.requester_email,team:r.team,name:r.recipient_name,phone:r.recipient_phone,phoneNorm:r.recipient_phone_norm,amount:Number(r.amount)||0,code:r.code||'',status:r.status,hold:r.hold_reason||'',isOverride:r.is_override,memo:r.memo||'',createdAt:(r.created_at||'').slice(0,10)};}
 function _mapExpense(r){return {id:r.id,requester:r.requester_name,requesterEmail:r.requester_email,team:r.team,method:r.method,cardLast4:r.card_last4||'',cardHolder:r.card_holder||'',spentDate:r.spent_date||'',merchant:r.merchant,amount:Number(r.amount)||0,unit:r.currency||'원',category:r.category||'',purpose:r.purpose||'',attendees:r.attendees||'',proofType:r.proof_type||'',proofUrl:r.proof_url||'',proofReason:r.proof_none_reason||'',status:r.status,rejectReason:r.reject_reason||'',decidedBy:r.decided_by||'',applied:(r.created_at||'').slice(0,10)};}
@@ -1549,8 +1563,8 @@ async function loadData(){
   DB.payout=po.map(_mapPayout);
   DB.invoice=iv.map(_mapInvoice);
   EXPENSE_READY=(ex!==null);DB.expense=EXPENSE_READY?ex.map(_mapExpense):[];
-  VENDORS.length=0;ve.forEach(v=>VENDORS.push({id:v.id,name:v.name,bizNo:v.biz_no,email:v.email,team:v.team,unit:v.unit||'원',cnt:v.tx_count||0,avg:Number(v.avg_amount)||0,max:Number(v.max_amount)||0,lastDate:v.last_date||'',bankbookUrl:v.bankbook_url||'',bizregUrl:v.bizreg_url||'',accounts:(v.accounts||[]).map(a=>({id:a.id,bank:a.bank,account:a.account,holder:a.holder,primary:a.is_primary})).sort((a,b)=>(b.primary?1:0)-(a.primary?1:0))}));
-  DB.templates=(rc.data||[]).map(t=>({id:t.id,payee:t.payee,bank:t.bank,account:t.account,amount:Number(t.amount)||0,category:t.category,total:t.total,done:t.done,nextDate:t.next_date,requester:t.requester_name,team:t.team}));
+  VENDORS.length=0;ve.forEach(v=>VENDORS.push({id:v.id,name:v.name,bizNo:v.biz_no,email:v.email,team:v.team,unit:v.unit||'원',cnt:v.tx_count||0,avg:Number(v.avg_amount)||0,max:Number(v.max_amount)||0,lastDate:v.last_date||'',bankbookUrl:v.bankbook_url||'',bizregUrl:v.bizreg_url||'',accounts:(v.accounts||[]).map(a=>({id:a.id,bank:normBank(a.bank),account:a.account,holder:a.holder,primary:a.is_primary})).sort((a,b)=>(b.primary?1:0)-(a.primary?1:0))}));
+  DB.templates=(rc.data||[]).map(t=>({id:t.id,payee:t.payee,bank:normBank(t.bank),account:t.account,amount:Number(t.amount)||0,category:t.category,total:t.total,done:t.done,nextDate:t.next_date,requester:t.requester_name,team:t.team}));
   LOCKED=new Set((lo.data||[]).map(x=>x.ym));
   DB.coupons=(cp||[]).map(_mapCoupon);
   try{const{data:stk}=await sb.rpc('fin_coupon_stock');COUPON_STOCK=Number(stk)||0;}catch(e){COUPON_STOCK=0;}
