@@ -750,6 +750,7 @@ function openPayoutForm(seed){
     <div id="f_anom" style="margin-top:10px"></div>
   `,`<button class="btn btn-secondary" onclick="closeModal()">취소</button><button class="btn btn-primary" onclick="submitPayout()">요청 등록</button>`);
   if(seed.unit)document.getElementById('f_unit').value=seed.unit;
+  _payeeAuto=seed.account?{bank:seed.bank||'',account:seed.account,bizNo:seed.bizNo||''}:null;
   dupHint();proofTypeChange();
 }
 function proofTypeChange(){
@@ -759,7 +760,30 @@ function proofTypeChange(){
   const L=document.getElementById('f_proofUrlLbl');if(L)L.innerHTML=(t==='명세서')?'증빙 링크 (Dropbox) <span class="req">*</span>':'증빙 링크 (Dropbox)<span class="hint">선택</span>';
   const N=document.getElementById('f_proofNoneRow');if(N)N.style.display=(t==='none')?'block':'none';
 }
-function onPayeePick(){const v=findVendor(val('f_payee'));if(v){const pa=v.accounts.find(a=>a.primary)||v.accounts[0];if(pa){document.getElementById('f_bank').value=pa.bank;document.getElementById('f_account').value=pa.account;}document.getElementById('f_unit').value=v.unit;var bz=document.getElementById('f_bizno');if(bz&&v.bizNo)bz.value=v.bizNo;}dupHint();}
+let _payeeAuto=null; /* 마지막 자동입력 값 — 직접 입력한 값과 구분해서, 거래처 변경 시 자동입력 잔존값만 비운다 */
+function onPayeePick(){
+  const bankEl=document.getElementById('f_bank'),accEl=document.getElementById('f_account'),bz=document.getElementById('f_bizno');
+  const v=findVendor(val('f_payee'));
+  const pa=v?(v.accounts.find(a=>a.primary)||v.accounts[0]):null;
+  if(v&&pa){
+    bankEl.value=pa.bank;accEl.value=pa.account;
+    document.getElementById('f_unit').value=v.unit;
+    if(bz&&v.bizNo)bz.value=v.bizNo;
+    _payeeAuto={bank:pa.bank,account:pa.account,bizNo:v.bizNo||''};
+  }else{
+    if(_payeeAuto){
+      if(accEl.value===_payeeAuto.account)accEl.value='';
+      if(bankEl.value===_payeeAuto.bank)bankEl.selectedIndex=0;
+      if(bz&&_payeeAuto.bizNo&&bz.value===_payeeAuto.bizNo)bz.value='';
+      _payeeAuto=null;
+    }
+    if(v){
+      document.getElementById('f_unit').value=v.unit;
+      if(bz&&v.bizNo){bz.value=v.bizNo;_payeeAuto={bank:'',account:'',bizNo:v.bizNo};}
+    }
+  }
+  dupHint();
+}
 function dupHint(){const el=document.getElementById('f_anom');if(!el)return;const amt=numVal('f_amount');const unit=val('f_unit')||'원';const r={payee:val('f_payee'),account:val('f_account'),amount:amt,unit,category:val('f_cat'),applied:today(),requester:ME().name};if(!r.payee){el.innerHTML='';return;}const flags=scanPayout(r);const big=unit==='원'&&amt>=THRESHOLD;const vend=findVendor(r.payee);
   const bizNorm=digits(val('f_bizno'));
   const vByBiz=bizNorm?vendorByBiz(bizNorm):null;
@@ -1468,7 +1492,7 @@ function submitCouponCodes(){
   else{let added=0;codes.forEach(c=>{if(!DB.couponCodes.some(x=>x.code===c)){DB.couponCodes.push({code:c,amount:30000,status:'available'});added++;}});closeModal();render();toast(added+'개 코드를 추가했어요.','ok');}
 }
 /* ===================== 모달/토스트 ===================== */
-function modal(title,cls,body,foot){closeModal();const ov=document.createElement('div');ov.className='overlay';ov.id='ov';ov.innerHTML=`<div class="modal ${cls||''}"><div class="modal-head"><h3>${escH(title)}</h3><button class="x" onclick="closeModal()">${I.x}</button></div><div class="modal-body">${body}</div>${foot?`<div class="modal-foot">${foot}</div>`:''}</div>`;ov.addEventListener('click',e=>{if(e.target===ov)closeModal();});document.body.appendChild(ov);}
+function modal(title,cls,body,foot){closeModal();const ov=document.createElement('div');ov.className='overlay';ov.id='ov';ov.innerHTML=`<div class="modal ${cls||''}"><div class="modal-head"><h3>${escH(title)}</h3><button class="x" onclick="closeModal()">${I.x}</button></div><div class="modal-body">${body}</div>${foot?`<div class="modal-foot">${foot}</div>`:''}</div>`;ov.addEventListener('mousedown',e=>{ov._downSelf=(e.target===ov);});ov.addEventListener('click',e=>{if(e.target===ov&&ov._downSelf)closeModal();});document.body.appendChild(ov);}
 function closeModal(){const o=document.getElementById('ov');if(o)o.remove();}
 function confirmModal(title,msg,onYes){closeModal();const ov=document.createElement('div');ov.className='overlay';ov.id='ov';ov.innerHTML=`<div class="modal" style="width:430px"><div class="modal-head"><h3>${escH(title)}</h3><button class="x" onclick="closeModal()">${I.x}</button></div><div class="modal-body"><div style="font-size:14px;line-height:1.65;color:var(--gray-800)">${msg}</div></div><div class="modal-foot"><button class="btn btn-secondary" onclick="closeModal()">취소</button><button class="btn btn-primary" id="cfy">확인</button></div></div>`;ov.addEventListener('click',e=>{if(e.target===ov)closeModal();});document.body.appendChild(ov);document.getElementById('cfy').onclick=()=>{closeModal();onYes&&onYes();};}
 function toast(msg,type){const t=document.createElement('div');t.className='toast'+(type?' '+type:'');t.innerHTML=(type==='ok'?I.check:'')+'<span>'+escH(msg)+'</span>';document.body.appendChild(t);setTimeout(()=>{t.style.transition='.3s';t.style.opacity='0';setTimeout(()=>t.remove(),300);},2400);}
