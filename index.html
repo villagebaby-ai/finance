@@ -554,6 +554,8 @@ function visible(arr,kind){
   let list=roleScope(arr);
   if(PERIOD!=='all'){const df=(kind==='invoice')?'writeDate':(isExpPage(kind)?'spentDate':'applied');list=list.filter(r=>inPeriod(r[df]));}
   if(FILTER.teams.size)list=list.filter(r=>FILTER.teams.has(normalizeTeam(r.team)));
+  /* 취소 건은 기본 숨김 — 필터에서 '취소'를 선택한 경우에만 표시 */
+  if((kind==='payout'||kind==='fuel')&&!FILTER.statuses.has('canceled'))list=list.filter(r=>r.status!=='canceled');
   if(FILTER.statuses.size)list=list.filter(r=>FILTER.statuses.has(r.status));
   if(FILTER.big&&kind==='payout')list=list.filter(r=>isBig(r));
   if(FILTER.anomaly&&kind==='payout')list=list.filter(r=>r.status==='requested'&&scanPayout(r).length);
@@ -570,7 +572,7 @@ function filterBar(kind){
   if(_filterOpen){
     h+='<div class="filterpop">';
     h+=`<div class="fgroup"><div class="fl">팀</div>${TEAMS_ALL.map(t=>`<button class="chip ${FILTER.teams.has(t)?'on':''}" onclick="tf('teams','${t}')">${escH(t)}</button>`).join('')}</div>`;
-    h+=`<div class="fgroup"><div class="fl">상태</div>${stats.map(s=>`<button class="chip ${FILTER.statuses.has(s)?'on':''}" onclick="tf('statuses','${s}')">${sm[s][0]}</button>`).join('')}</div>`;
+    h+=`<div class="fgroup"><div class="fl">상태</div>${stats.map(s=>`<button class="chip ${FILTER.statuses.has(s)?'on':''}" onclick="tf('statuses','${s}')">${sm[s][0]}${kind==='payout'&&s==='canceled'?' · 기본숨김':''}</button>`).join('')}</div>`;
     if(kind==='payout')h+=`<div class="fgroup"><div class="fl">기타</div><button class="chip ${FILTER.anomaly?'on':''}" onclick="FILTER.anomaly=!FILTER.anomaly;render()">⚠️ 이상거래만</button><button class="chip ${FILTER.big?'on':''}" onclick="FILTER.big=!FILTER.big;render()">🔺 1천만+ (고액)</button></div>`;
     h+=`<div class="filtpop-foot">${cnt?`<button class="btn btn-sm btn-secondary" onclick="clearFilter();render()">초기화</button>`:'<span></span>'}<button class="btn btn-sm btn-primary" onclick="_filterOpen=false;render()">적용</button></div>`;
     h+='</div>';
