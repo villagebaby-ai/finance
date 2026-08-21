@@ -891,8 +891,9 @@ function canEditPayout(r){return r&&r.status==='requested'&&!r.fuel&&r.category!
 function canDeletePayout(r){return r&&r.status!=='paid'&&r.requester===ME().name;} /* 본인 작성 건만, 지급완료는 삭제 불가 */
 function deletePayout(id){
   const r=DB.payout.find(x=>x.id===id);if(!canDeletePayout(r))return;
-  confirmModal('🗑 이체 요청 삭제',`<b>${escH(r.payee)}</b> · ${won(r.amount)}${r.unit==='원'?'원':' '+r.unit}<br><br>이 요청을 완전히 삭제할까요? <b>되돌릴 수 없어요.</b>`,()=>{
-    sv('fin_delete_payout',{p_id:id},()=>{const i=DB.payout.findIndex(x=>x.id===id);if(i>=0)DB.payout.splice(i,1);})
+  /* 서버의 취소 기능을 이용 — 취소 건은 목록에서 기본 숨김이라 화면상 삭제와 동일 */
+  confirmModal('🗑 이체 요청 삭제',`<b>${escH(r.payee)}</b> · ${won(r.amount)}${r.unit==='원'?'원':' '+r.unit}<br><br>이 요청을 목록에서 삭제할까요?`,()=>{
+    sv('fin_cancel_payout',{p_id:id},()=>{const x=DB.payout.find(y=>y.id===id);if(x)x.status='canceled';})
       .then(()=>{closeModal();render();toast('삭제했어요.','ok');})
       .catch(()=>{});
   });
