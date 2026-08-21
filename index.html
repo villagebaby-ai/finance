@@ -668,7 +668,7 @@ function _searchRender(){const cur=document.querySelector('.search input');const
 function onSearch(v){_q=v;_searchRender();}
 function setSort(page,k){const s=_sort[page];if(s.k===k)s.dir*=-1;else{s.k=k;s.dir=(k==='date'||k==='writeDate'||k==='paid'||k==='amount')?-1:1;}render();}
 function sortIcon(page,k){const s=_sort[page];return s.k===k?`<span class="ar">${s.dir>0?'▲':'▼'}</span>`:'';}
-function sortVal(r,page,k){const exp=isExpPage(page);if(k==='amount')return page==='invoice'?(r.total||0):(r.amount||0);if(k==='name')return (page==='invoice'?r.company:(exp?r.merchant:r.payee))||'';if(k==='holder')return r.cardHolder||'';if(k==='item')return r.itemName||'';if(k==='writeDate')return r.writeDate||'';if(k==='team')return normalizeTeam(r.team)||'';if(k==='status')return r.status||'';if(k==='paid')return r.paidAt||'';return (exp?r.spentDate:r.applied)||'';}
+function sortVal(r,page,k){const exp=isExpPage(page);if(k==='amount')return page==='invoice'?(r.total||0):(r.amount||0);if(k==='name')return (page==='invoice'?r.company:(exp?r.merchant:r.payee))||'';if(k==='holder')return r.cardHolder||'';if(k==='item')return r.itemName||'';if(k==='writeDate')return r.writeDate||'';if(k==='team')return normalizeTeam(r.team)||'';if(k==='status')return r.status||'';if(k==='paid')return r.paidAt||'';return (exp?r.spentDate:(r.appliedTs||r.applied))||'';}
 function applySort(list,page){const s=_sort[page];const isNum=(s.k==='amount');list.sort((a,b)=>{const av=sortVal(a,page,s.k),bv=sortVal(b,page,s.k);let r=isNum?(av-bv):String(av).localeCompare(String(bv),'ko');return r*s.dir||(b.id>a.id?1:-1);});return list;}
 function toggleSel(id){_sel.has(id)?_sel.delete(id):_sel.add(id);render();}
 function toggleAll(page){const list=visible(page==='payout'?DB.payout:DB.invoice,page);const ids=list.map(r=>r.id);_sel=new Set(ids.every(i=>_sel.has(i))?[]:ids);render();}
@@ -734,7 +734,7 @@ function renderPayout(){
     h+=`<td class="rzc"><div class="t-name">${escH(r.payee)} ${r.category==='유류비'?'<span class="tag tag-fuel">유류비</span>':''}</div><div class="t-sub">${escH(r.purpose||'-')}</div></td>`;
     h+=`<td class="mhide">${escH(normalizeTeam(r.team)||'-')}</td><td class="mhide nmcell">${r.requester?nameWrap(r.requester):'<span class="t-sub">-</span>'}</td>`;
     h+=`<td class="mhide"><span class="tag tag-gray">${escH(r.category||'-')}</span></td>`;
-    h+=`<td class="t-sub num mhide" style="white-space:nowrap">${escH(r.applied||'-')}</td>`;
+    h+=`<td class="t-sub num mhide" style="white-space:nowrap">${escH(r.applied||'-')}${r.appliedTs?`<div style="font-size:11px;color:var(--gray-400)">${escH(r.appliedTs.slice(11))}</div>`:''}</td>`;
     h+=`<td class="mhide">${escH(r.bank||'-')}<div class="t-sub num">${escH(r.account||'')}</div></td>`;
     h+=`<td style="text-align:right"><span class="amt">${won(r.amount)}</span>${r.unit!=='원'?' <span class="t-sub">'+r.unit+'</span>':''}</td>`;
     h+=`<td class="mhide" style="max-width:175px;white-space:normal">${flags.length?`<span class="flagwrap" onclick="event.stopPropagation();anomalyDetail('${r.id}')" title="클릭하면 감지 근거 보기">${flags.map(flagHtml).join('')}</span>`:''}${isBig(r)?(flags.length?' ':'')+'<span class="tag tag-blue">🔺 고액</span>':(flags.length?'':'<span class="t-sub">–</span>')}</td>`;
@@ -832,7 +832,9 @@ function dupHint(){const el=document.getElementById('f_anom');if(!el)return;cons
   const newVendorNote=isNew?`<div style="margin-top:8px;background:var(--billy-blue-50);border:1px solid var(--billy-blue-100);border-radius:var(--r-md);padding:10px 12px;font-size:12.5px;line-height:1.65;color:var(--gray-800)">🆕 <b>첫 거래처네요!</b> 첫 이체가 필요한 신규 거래처는 <b>통장사본 및 사업자등록증</b>(개인은 <b>신분증 사본</b>)이 필요해요. 드랍박스 <b>Finance 폴더</b>에 저장하고 URL을 기재해 주세요.<br><a href="${DROPBOX_FINANCE}" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;color:var(--billy-blue);font-weight:700;text-decoration:underline">📁 Dropbox Finance 폴더 열기 ↗</a></div>`:'';
   const bottomNote=isNew?`<div class="t-sub" style="margin-top:8px">📎 미등록 거래처예요. 안전을 위해 <b>거래처 관리</b>에서 거래처 서류 등록 부탁드립니다.</div>`:'';
   el.innerHTML=(flags.length?'<div style="margin-bottom:6px">'+flags.map(flagHtml).join('')+'</div>':'')+(big?`<div class="t-sub" style="margin-top:6px">🔺 1천만원 이상 — 고액 거래건으로 기록됩니다.</div>`:'')+newVendorNote+bottomNote;}
+let _paySubmitting=false; /* 저장 연타 시 중복 등록 방지 */
 function submitPayout(){
+  if(_paySubmitting)return;
   const pt=val('f_prooftype'),adeq=PROOF_ADEQ.has(pt);
   const r={id:uid('p'),requester:ME().name,team:ME().team,payee:val('f_payee'),bank:val('f_bank'),account:val('f_account'),amount:numVal('f_amount'),unit:val('f_unit')||'원',category:val('f_cat'),purpose:val('f_purpose'),evidence:val('f_evidence'),proofType:pt,proofDate:adeq?val('f_proofdate'):'',proofStatus:adeq?(val('f_proofstatus')||'받을예정'):'',proofReason:pt==='none'?val('f_proofreason'):'',proofReceivedAt:(adeq&&val('f_proofstatus')==='수취완료')?today():'',hasTax:pt==='세금계산서',status:'requested',applied:today(),paidAt:''};
   if(!r.payee||!r.account||!r.amount){toast('거래처·계좌·금액은 필수예요.','err');return;}
@@ -846,13 +848,16 @@ function submitPayout(){
   const editId=_editPayoutId;
   const warns=scanPayout(r,editId).filter(f=>f.s==='warn');
   const go=()=>{
+    _paySubmitting=true;
+    const sbtn=document.querySelector('#ov .modal-foot .btn-primary');if(sbtn)sbtn.disabled=true;
     let pr=sv('fin_submit_payout',{p:payoutPayload(r,recur?total:0)},()=>{
       if(editId){const old=DB.payout.find(x=>x.id===editId);if(old)old.status='canceled';}
       DB.payout.unshift(r);
       if(recur&&total>1)DB.templates.push({id:uid('t'),requester:r.requester,team:r.team,payee:r.payee,bank:r.bank,account:r.account,amount:r.amount,category:r.category,purpose:r.purpose,hasTax:r.hasTax,total,done:1,nextDate:addMonth(today(),1)});
     });
     if(editId)pr=pr.then(()=>sv('fin_cancel_payout',{p_id:editId},()=>{}));
-    pr.then(()=>{_editPayoutId=null;closeModal();render();toast(editId?'요청을 수정했어요. (기존 요청은 취소 처리)':(recur&&total>1?'이체 요청 + 정기('+total+'회) 등록했어요.':'이체 요청을 등록했어요.'),'ok');});
+    pr.then(()=>{_paySubmitting=false;_editPayoutId=null;closeModal();render();toast(editId?'요청을 수정했어요. (기존 요청은 취소 처리)':(recur&&total>1?'이체 요청 + 정기('+total+'회) 등록했어요.':'이체 요청을 등록했어요.'),'ok');})
+      .catch(()=>{_paySubmitting=false;const b=document.querySelector('#ov .modal-foot .btn-primary');if(b)b.disabled=false;});
   };
   if(warns.length){closeModal();confirmModal('⚠️ 이상 신호 확인',warns.map(f=>'<b>'+f.t+'</b> — '+escH(f.d)).join('<br>')+'<br><br>그래도 등록할까요?',go);return;}
   go();
@@ -900,6 +905,7 @@ function viewPayout(id){
     <dt>적요</dt><dd>${escH(r.purpose||'-')}</dd>
     <dt>신청인</dt><dd>${escH(r.requester||'-')}</dd>
     <dt>팀</dt><dd>${escH(normalizeTeam(r.team)||'-')}</dd>
+    <dt>요청일</dt><dd class="num">${escH(r.appliedTs||r.applied||'-')}</dd>
     <dt>고액 이체건</dt><dd>${isBig(r)?'🔺 1천만+ (고액)':'해당 없음'}</dd>
     ${r.paidAt?`<dt>지급완료</dt><dd>${escH(r.paidAt)}</dd>`:''}
   </div>${proof}${fuel}${wh}${memoHtml(r)}`,foot);
@@ -1555,7 +1561,8 @@ async function loadMe(){
   if(!name)name=(email.split('@')[0]||'사용자');
   SUPA_USER={email,role,name,team,av:(name||'·').slice(0,1),rl:roleLabel(role)};ROLE=role;
 }
-function _mapPayout(r){return {id:r.id,requester:r.requester_name,team:r.team,payee:r.payee,bank:normBank(r.bank),account:r.account,amount:Number(r.amount)||0,unit:r.currency||'원',category:r.category,purpose:r.purpose,evidence:r.evidence_url,hasTax:r.has_tax,proofType:r.proof_type||'',proofDate:r.proof_date||'',proofStatus:r.proof_status||'',proofReason:r.proof_none_reason||'',proofReceivedAt:r.proof_received_at||'',status:r.status,paidAt:r.paid_date||'',applied:(r.created_at||'').slice(0,10),wh:r.wh,fuel:r.fuel};}
+function fmtTs(iso){if(!iso)return '';const d=new Date(iso);if(isNaN(d))return '';const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());}
+function _mapPayout(r){const ts=fmtTs(r.created_at);return {id:r.id,requester:r.requester_name,team:r.team,payee:r.payee,bank:normBank(r.bank),account:r.account,amount:Number(r.amount)||0,unit:r.currency||'원',category:r.category,purpose:r.purpose,evidence:r.evidence_url,hasTax:r.has_tax,proofType:r.proof_type||'',proofDate:r.proof_date||'',proofStatus:r.proof_status||'',proofReason:r.proof_none_reason||'',proofReceivedAt:r.proof_received_at||'',status:r.status,paidAt:r.paid_date||'',applied:ts?ts.slice(0,10):(r.created_at||'').slice(0,10),appliedTs:ts,wh:r.wh,fuel:r.fuel};}
 function _mapInvoice(r){return {id:r.id,requester:r.requester_name,team:r.team,saleType:r.sale_type,bizNo:r.biz_no,company:r.company,ceo:r.ceo,email:r.email,writeDate:r.write_date,itemName:r.item_name,supply:Number(r.supply)||0,tax:Number(r.vat)||0,total:Number(r.total)||0,evidence:r.evidence_url,status:r.status,applied:(r.created_at||'').slice(0,10),issuedAt:r.issued_date||''};}
 function _mapCoupon(r){return {id:r.id,requester:r.requester_name,requesterEmail:r.requester_email,team:r.team,name:r.recipient_name,phone:r.recipient_phone,phoneNorm:r.recipient_phone_norm,amount:Number(r.amount)||0,code:r.code||'',status:r.status,hold:r.hold_reason||'',isOverride:r.is_override,memo:r.memo||'',createdAt:(r.created_at||'').slice(0,10)};}
 function _mapExpense(r){return {id:r.id,requester:r.requester_name,requesterEmail:r.requester_email,team:r.team,method:r.method,cardLast4:r.card_last4||'',cardHolder:r.card_holder||'',spentDate:r.spent_date||'',merchant:r.merchant,amount:Number(r.amount)||0,unit:r.currency||'원',category:r.category||'',purpose:r.purpose||'',attendees:r.attendees||'',proofType:r.proof_type||'',proofUrl:r.proof_url||'',proofReason:r.proof_none_reason||'',status:r.status,rejectReason:r.reject_reason||'',decidedBy:r.decided_by||'',applied:(r.created_at||'').slice(0,10)};}
