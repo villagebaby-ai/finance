@@ -745,7 +745,7 @@ function renderPayout(){
     h+=`<button class="iconbtn" title="은행 이체 엑셀" onclick="event.stopPropagation();exportPayoutOne('${r.id}')">${I.download}</button>`;
     h+=`<button class="iconbtn" title="복제" onclick="event.stopPropagation();clonePayout('${r.id}')">${I.copy}</button>`;
     if(canEditPayout(r))h+=`<button class="iconbtn" title="수정" onclick="event.stopPropagation();editPayout('${r.id}')">✏️</button>`;
-    if(!canViewAll()&&r.requester===ME().name&&r.status==='requested')h+=`<button class="iconbtn" title="철회" onclick="event.stopPropagation();cancelPayout('${r.id}')">${I.trash}</button>`;
+    if(canDeletePayout(r))h+=`<button class="iconbtn" title="삭제 (본인 작성 건)" onclick="event.stopPropagation();deletePayout('${r.id}')">${I.trash}</button>`;
     h+='</div></td></tr>';
   });
   h+='</tbody></table></div></div>';
@@ -888,11 +888,20 @@ function submitFuel(){
 }
 function clonePayout(id){const r=DB.payout.find(x=>x.id===id);if(!r)return;openPayoutForm({payee:r.payee,bank:r.bank,account:r.account,amount:r.amount,unit:r.unit,category:r.category,purpose:r.purpose,proofType:r.proofType});toast('과거 요청을 복제했어요.','ok');}
 function canEditPayout(r){return r&&r.status==='requested'&&!r.fuel&&r.category!=='유류비'&&!r.wh&&r.requester===ME().name;}
+function canDeletePayout(r){return r&&r.status!=='paid'&&r.requester===ME().name;} /* 본인 작성 건만, 지급완료는 삭제 불가 */
+function deletePayout(id){
+  const r=DB.payout.find(x=>x.id===id);if(!canDeletePayout(r))return;
+  confirmModal('🗑 이체 요청 삭제',`<b>${escH(r.payee)}</b> · ${won(r.amount)}${r.unit==='원'?'원':' '+r.unit}<br><br>이 요청을 완전히 삭제할까요? <b>되돌릴 수 없어요.</b>`,()=>{
+    sv('fin_delete_payout',{p_id:id},()=>{const i=DB.payout.findIndex(x=>x.id===id);if(i>=0)DB.payout.splice(i,1);})
+      .then(()=>{closeModal();render();toast('삭제했어요.','ok');})
+      .catch(()=>{});
+  });
+}
 function editPayout(id){const r=DB.payout.find(x=>x.id===id);if(!canEditPayout(r))return;openPayoutForm({editId:id,payee:r.payee,bank:r.bank,account:r.account,amount:r.amount,unit:r.unit,category:r.category,purpose:r.purpose,evidence:r.evidence,proofType:r.proofType,proofDate:r.proofDate,proofStatus:r.proofStatus,proofReason:r.proofReason});}
 function cancelPayout(id){confirmModal('이체 요청 철회','이 요청을 철회할까요?',()=>{sv('fin_cancel_payout',{p_id:id},()=>{const r=DB.payout.find(x=>x.id===id);if(r)r.status='canceled';}).then(()=>{render();toast('철회했어요.');});});}
 function viewPayout(id){
   const r=DB.payout.find(x=>x.id===id);if(!r)return;const st=PSTATUS[r.status];const flags=r.status==='requested'?scanPayout(r):[];
-  const editBtn=canEditPayout(r)?`<button class="btn btn-line btn-sm" onclick="closeModal();editPayout('${id}')"><span>✏️ 수정</span></button>`:'';
+  const editBtn=(canEditPayout(r)?`<button class="btn btn-line btn-sm" onclick="closeModal();editPayout('${id}')"><span>✏️ 수정</span></button>`:'')+(canDeletePayout(r)?`<button class="btn btn-danger btn-sm" onclick="closeModal();deletePayout('${id}')"><span>🗑 삭제</span></button>`:'');
   let foot=`<button class="btn btn-line btn-sm" onclick="exportPayoutOne('${id}')">${I.download}<span>은행 엑셀</span></button>${editBtn}<button class="btn btn-line btn-sm" onclick="closeModal();clonePayout('${id}')">${I.copy}<span>복제</span></button><button class="btn btn-secondary" onclick="closeModal()">닫기</button>`;
   if(canApprove()&&r.status==='requested')foot=`<button class="btn btn-line btn-sm" onclick="exportPayoutOne('${id}')">${I.download}<span>은행 엑셀</span></button>${editBtn}<button class="btn btn-danger" onclick="decidePayout('${id}','rejected')">반려</button><button class="btn btn-primary" onclick="decidePayout('${id}','paid')">지급완료</button>`;
   const fuel=r.fuel?`<div class="hr"></div><div style="font-weight:700;font-size:13px;margin-bottom:8px">🚗 유류비/출장 정보</div><div class="dl"><dt>경로</dt><dd>${escH(r.fuel.from)} → ${escH(r.fuel.to)} ${r.fuel.roundTrip?'(왕복)':''}</dd><dt>목적</dt><dd>${escH(r.fuel.visit||'')}</dd><dt>거리</dt><dd>${escH(r.fuel.km||'-')} km</dd><dt>차량</dt><dd>${escH(r.fuel.carNo||'-')}</dd></div>`:'';
@@ -996,7 +1005,7 @@ function renderFuel(){
     h+=`<td class="t-sub num mhide" style="white-space:nowrap">${escH(r.applied||'-')}</td>`;
     h+=`<td style="text-align:right"><span class="amt">${won(r.amount)}</span></td>`;
     h+=`<td>${admin?`<button class="badge ${st[1]}" onclick="event.stopPropagation();openStatusMenu('${r.id}',event)" title="클릭해서 상태 변경">${st[0]}<span class="caret">▼</span></button>`:`<span class="badge ${st[1]}">${st[0]}</span>`}</td>`;
-    h+=`<td><div class="rowact"><button class="iconbtn" title="은행 이체 엑셀" onclick="event.stopPropagation();exportPayoutOne('${r.id}')">${I.download}</button>${!canViewAll()&&r.requester===ME().name&&r.status==='requested'?`<button class="iconbtn" title="철회" onclick="event.stopPropagation();cancelPayout('${r.id}')">${I.trash}</button>`:''}</div></td></tr>`;
+    h+=`<td><div class="rowact"><button class="iconbtn" title="은행 이체 엑셀" onclick="event.stopPropagation();exportPayoutOne('${r.id}')">${I.download}</button>${canDeletePayout(r)?`<button class="iconbtn" title="삭제 (본인 작성 건)" onclick="event.stopPropagation();deletePayout('${r.id}')">${I.trash}</button>`:''}</div></td></tr>`;
   });
   h+='</tbody></table></div></div>';c.innerHTML=h;
 }
