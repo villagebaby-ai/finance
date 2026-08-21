@@ -363,6 +363,7 @@ let ROLE='finance';
 const ME=()=>(IS_SUPA&&SUPA_USER)?SUPA_USER:ROLE_DEF[ROLE];
 const canViewAll=()=>['viewer','finance','exec'].includes(ROLE);
 const canApprove=()=>['finance','exec','viewer'].includes(ROLE); // 처리(지급완료/반려/상태변경 등) = 데모 재무·데모 대표·데모 조회(admin 3인)
+const canReject=()=>canApprove()&&ME().name==='정채영'; // 이체 반려는 정채영만 가능
 const canVendorAdmin=()=>['finance','exec','viewer'].includes(ROLE); // 신규 거래처 승인·등록 = admin 3인
 const THRESHOLD_NOTIFY=THRESHOLD; // 1천만+ → 데모 대표 대표 메일 통지(승인 아님)
 const isBig=r=>!!(r&&r.unit==='원'&&(Number(r.amount)||0)>=THRESHOLD);
@@ -904,7 +905,7 @@ function viewPayout(id){
   const r=DB.payout.find(x=>x.id===id);if(!r)return;const st=PSTATUS[r.status];const flags=r.status==='requested'?scanPayout(r):[];
   const editBtn=(canEditPayout(r)?`<button class="btn btn-line btn-sm" onclick="closeModal();editPayout('${id}')"><span>✏️ 수정</span></button>`:'')+(canDeletePayout(r)?`<button class="btn btn-danger btn-sm" onclick="closeModal();deletePayout('${id}')"><span>🗑 삭제</span></button>`:'');
   let foot=`<button class="btn btn-line btn-sm" onclick="exportPayoutOne('${id}')">${I.download}<span>은행 엑셀</span></button>${editBtn}<button class="btn btn-line btn-sm" onclick="closeModal();clonePayout('${id}')">${I.copy}<span>복제</span></button><button class="btn btn-secondary" onclick="closeModal()">닫기</button>`;
-  if(canApprove()&&r.status==='requested')foot=`<button class="btn btn-line btn-sm" onclick="exportPayoutOne('${id}')">${I.download}<span>은행 엑셀</span></button>${editBtn}<button class="btn btn-danger" onclick="decidePayout('${id}','rejected')">반려</button><button class="btn btn-primary" onclick="decidePayout('${id}','paid')">지급완료</button>`;
+  if(canApprove()&&r.status==='requested')foot=`<button class="btn btn-line btn-sm" onclick="exportPayoutOne('${id}')">${I.download}<span>은행 엑셀</span></button>${editBtn}${canReject()?`<button class="btn btn-danger" onclick="decidePayout('${id}','rejected')">반려</button>`:''}<button class="btn btn-primary" onclick="decidePayout('${id}','paid')">지급완료</button>`;
   const fuel=r.fuel?`<div class="hr"></div><div style="font-weight:700;font-size:13px;margin-bottom:8px">🚗 유류비/출장 정보</div><div class="dl"><dt>경로</dt><dd>${escH(r.fuel.from)} → ${escH(r.fuel.to)} ${r.fuel.roundTrip?'(왕복)':''}</dd><dt>목적</dt><dd>${escH(r.fuel.visit||'')}</dd><dt>거리</dt><dd>${escH(r.fuel.km||'-')} km</dd><dt>차량</dt><dd>${escH(r.fuel.carNo||'-')}</dd></div>`:'';
   const wh=r.wh?`<div class="hr"></div><div style="font-weight:700;font-size:13px;margin-bottom:8px">🧾 원천징수</div><div class="dl"><dt>지급총액</dt><dd>${won(r.wh.gross)}원</dd><dt>원천징수</dt><dd>${won(r.wh.tax)}원 (${escH(r.wh.type)})</dd><dt>실지급액</dt><dd><b>${won(r.wh.net)}원</b></dd></div>`:'';
   const proof=proofDetailHtml(r);
@@ -950,13 +951,13 @@ function memoHtml(r){
 function addMemo(id){const el=document.getElementById('memo_in_'+id);const body=el?el.value.trim():'';if(!body){toast('메모 내용을 입력해 주세요.','err');return;}
   sv('fin_add_memo',{p_payout_id:id,p_body:body},()=>{(MEMOS[id]=MEMOS[id]||[]).push({id:uid('mm'),author:ME().name,body:body,at:today()+' '+new Date().toTimeString().slice(0,5)});}).then(()=>{const o=document.getElementById('ov');if(o)o.remove();viewPayout(id);toast('메모를 추가했어요.','ok');});}
 function delMemo(mid,pid){sv('fin_del_memo',{p_id:mid},()=>{MEMOS[pid]=(MEMOS[pid]||[]).filter(m=>m.id!==mid);}).then(()=>{const o=document.getElementById('ov');if(o)o.remove();viewPayout(pid);toast('메모를 삭제했어요.');});}
-function decidePayout(id,status){sv('fin_decide_payout',{p_id:id,p_status:status,p_reason:''},()=>{const r=DB.payout.find(x=>x.id===id);if(r){r.status=status;if(status==='paid')r.paidAt=today();}}).then(()=>{closeModal();render();toast(status==='paid'?'지급완료로 표시했어요.':'반려했어요.',status==='rejected'?'err':'ok');});}
+function decidePayout(id,status){if(status==='rejected'&&!canReject()){toast('반려는 정채영님만 할 수 있어요.','err');return;}sv('fin_decide_payout',{p_id:id,p_status:status,p_reason:''},()=>{const r=DB.payout.find(x=>x.id===id);if(r){r.status=status;if(status==='paid')r.paidAt=today();}}).then(()=>{closeModal();render();toast(status==='paid'?'지급완료로 표시했어요.':'반려했어요.',status==='rejected'?'err':'ok');});}
 /* 상태 인라인 변경 — 상태 배지 클릭 → 옵션 선택(재무만, 자유 전환) */
 function closeStatusMenu(){['statusMenu','statusBackdrop'].forEach(i=>{const e=document.getElementById(i);if(e)e.remove();});}
 function openStatusMenu(id,ev){
   ev.stopPropagation();closeStatusMenu();
   const r=DB.payout.find(x=>x.id===id);if(!r)return;
-  const opts=[['requested','지급대기'],['paid','지급완료'],['rejected','반려'],['canceled','취소']];
+  const opts=[['requested','지급대기'],['paid','지급완료'],['rejected','반려'],['canceled','취소']].filter(([k])=>k!=='rejected'||canReject());
   const m=document.createElement('div');m.className='statusmenu';m.id='statusMenu';
   m.innerHTML=opts.map(([k,label])=>`<button class="statusopt ${r.status===k?'cur':''}" onclick="setPayoutStatus('${id}','${k}')"><span class="badge ${PSTATUS[k][1]}">${label}</span>${r.status===k?'<span class="t-sub" style="margin-left:auto">현재</span>':''}</button>`).join('');
   document.body.appendChild(m);
@@ -967,6 +968,7 @@ function openStatusMenu(id,ev){
 }
 function setPayoutStatus(id,status){
   closeStatusMenu();
+  if(status==='rejected'&&!canReject()){toast('반려는 정채영님만 할 수 있어요.','err');return;}
   const r=DB.payout.find(x=>x.id===id);if(!r||r.status===status)return;
   sv('fin_set_payout_status',{p_id:id,p_status:status},()=>{r.status=status;r.paidAt=status==='paid'?(r.paidAt||today()):'';}).then(()=>{render();toast('상태를 '+PSTATUS[status][0]+'(으)로 바꿨어요.','ok');});
 }
