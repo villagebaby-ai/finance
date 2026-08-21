@@ -84,6 +84,17 @@ a{color:inherit;text-decoration:none}
 .chip:hover{border-color:var(--billy-blue)}
 .fgroup{margin-bottom:9px}
 .fgroup .fl{font-size:11.5px;color:var(--gray);font-weight:600;margin-bottom:3px}
+.payeewrap{position:relative}
+.payeewrap .input{padding-right:36px;width:100%}
+.plbtn{position:absolute;right:1px;top:1px;bottom:1px;width:32px;display:flex;align-items:center;justify-content:center;color:var(--gray-600);font-size:12px;border-radius:0 var(--r-md) var(--r-md) 0;background:transparent}
+.plbtn:hover{background:var(--gray-100);color:var(--billy-blue)}
+.plist{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid var(--gray-200);border-radius:var(--r-md);box-shadow:var(--sh-l);max-height:228px;overflow-y:auto;z-index:60}
+.pli{padding:9px 12px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.pli:hover{background:var(--billy-blue-50)}
+.pli b{font-weight:600}
+.psub{color:var(--gray);font-size:11.5px;white-space:nowrap}
+.pli.pnone{color:var(--gray);cursor:default}
+.pli.pnone:hover{background:none}
 .table-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:820px}
 thead th{text-align:left;color:var(--gray-600);font-weight:700;font-size:12.5px;padding:13px 14px;border-bottom:1.5px solid var(--gray-200);white-space:nowrap;background:var(--gray-50)}
@@ -732,7 +743,7 @@ function openPayoutForm(seed){
   const cur=CURRENCIES.map(x=>`<option ${seed.unit===x?'selected':''}>${x}</option>`).join('');
   modal('새 이체 요청','wide',POLICY_HTML+`
     <div class="t-sub" style="margin:0 0 12px">신청인: <b>${escH(ME().name)}</b>${ME().team?' · '+escH(normalizeTeam(ME().team)):''} <span style="color:var(--gray)">(요청 시 자동 기록)</span></div>
-    <div class="form-row"><label>거래처/예금주 <span class="req">*</span><span class="hint">검색 후 선택 시 계좌 자동입력</span></label><input class="input" id="f_payee" value="${escH(seed.payee||'')}" placeholder="거래처명" list="vlist" oninput="onPayeePick()"><datalist id="vlist">${VENDORS.map(v=>`<option value="${escH(v.name)}">`).join('')}</datalist></div>
+    <div class="form-row"><label>거래처/예금주 <span class="req">*</span><span class="hint">검색 후 선택 시 계좌 자동입력</span></label><div class="payeewrap"><input class="input" id="f_payee" value="${escH(seed.payee||'')}" placeholder="거래처명" autocomplete="off" oninput="onPayeeInput()"><button type="button" class="plbtn" tabindex="-1" onclick="togglePayeeList()">▾</button><div class="plist" id="payeeList"></div></div></div>
     <div class="form-row"><label>사업자등록번호<span class="hint">신규 여부 확인용 · 개인은 비워두세요 (- 상관없음)</span></label><input class="input num" id="f_bizno" value="${escH(seed.bizNo||'')}" placeholder="10자리" oninput="dupHint()"></div>
     <div class="f2"><div class="form-row"><label>은행 <span class="req">*</span></label><select class="input" id="f_bank">${banks}</select></div><div class="form-row"><label>계좌번호 <span class="req">*</span></label><input class="input num" id="f_account" value="${escH(seed.account||'')}" placeholder="- 없이 숫자" oninput="dupHint()"></div></div>
     <div class="f2"><div class="form-row"><label>금액 <span class="req">*</span></label><input class="input num" id="f_amount" value="${seed.amount?won(seed.amount):''}" placeholder="0" oninput="this.value=comma(this.value);dupHint()"></div><div class="form-row"><label>통화</label><select class="input" id="f_unit">${cur}</select></div></div>
@@ -760,6 +771,19 @@ function proofTypeChange(){
   const L=document.getElementById('f_proofUrlLbl');if(L)L.innerHTML=(t==='명세서')?'증빙 링크 (Dropbox) <span class="req">*</span>':'증빙 링크 (Dropbox)<span class="hint">선택</span>';
   const N=document.getElementById('f_proofNoneRow');if(N)N.style.display=(t==='none')?'block':'none';
 }
+/* 거래처 드롭다운 — ▾ 클릭 시 전체 목록, 타이핑 시 검색 필터 */
+function onPayeeInput(){renderPayeeList(val('f_payee'));showPayeeList(true);onPayeePick();}
+function togglePayeeList(){const box=document.getElementById('payeeList');if(!box)return;if(box.style.display==='block'){showPayeeList(false);}else{renderPayeeList('');showPayeeList(true);}}
+function showPayeeList(on){const box=document.getElementById('payeeList');if(box)box.style.display=on?'block':'none';}
+function renderPayeeList(filter){
+  const box=document.getElementById('payeeList');if(!box)return;
+  const norm=s=>String(s||'').replace(/\(주\)|주식회사|\s|㈜/g,'').toLowerCase();
+  const k=norm(filter);
+  const items=VENDORS.map((v,i)=>({v,i})).filter(x=>!k||norm(x.v.name).includes(k));
+  box.innerHTML=items.length?items.map(({v,i})=>{const pa=(v.accounts||[]).find(a=>a.primary)||(v.accounts||[])[0];return `<div class="pli" onmousedown="event.preventDefault();pickPayeeIdx(${i})"><b>${escH(v.name)}</b><span class="psub">${pa?escH(pa.bank)+' '+escH(pa.account):'등록 계좌 없음'}</span></div>`;}).join(''):'<div class="pli pnone">일치하는 거래처가 없어요</div>';
+}
+function pickPayeeIdx(i){const v=VENDORS[i];if(!v)return;document.getElementById('f_payee').value=v.name;showPayeeList(false);onPayeePick();}
+document.addEventListener('mousedown',e=>{const box=document.getElementById('payeeList');if(box&&box.style.display==='block'&&!e.target.closest('.payeewrap'))showPayeeList(false);});
 let _payeeAuto=null; /* 마지막 자동입력 값 — 직접 입력한 값과 구분해서, 거래처 변경 시 자동입력 잔존값만 비운다 */
 function onPayeePick(){
   const bankEl=document.getElementById('f_bank'),accEl=document.getElementById('f_account'),bz=document.getElementById('f_bizno');
